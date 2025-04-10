@@ -1,40 +1,29 @@
+'use client';
 
-import ExerciseList from '@/components/ExerciseList';
-import WorkoutBuilder from '@/components/WorkoutBuilder';
-import ProgressTracker from '@/components/ProgressTracker';
-import Profile from '@/components/Profile';
-import PersonalizedWorkoutPlan from '@/components/PersonalizedWorkoutPlan';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import {useRouter} from 'next/navigation';
+import {Button} from '@/components/ui/button';
+import {useEffect} from "react";
 
-export default function Home() {
+export default function StartScreen() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      router.push('/home');
+    }
+  }, [router]);
+
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-5">FitNext</h1>
-
-      <Tabs defaultvalue="exercises" className="w-[400px]">
-        <TabsList>
-          <TabsTrigger value="exercises">Exercises</TabsTrigger>
-          <TabsTrigger value="builder">Workout Builder</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="ai">AI Workout Plan</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-        </TabsList>
-        <TabsContent value="exercises">
-          <ExerciseList/>
-        </TabsContent>
-        <TabsContent value="builder">
-          <WorkoutBuilder/>
-        </TabsContent>
-        <TabsContent value="progress">
-          <ProgressTracker/>
-        </TabsContent>
-        <TabsContent value="ai">
-          <PersonalizedWorkoutPlan/>
-        </TabsContent>
-        <TabsContent value="profile">
-          <Profile/>
-        </TabsContent>
-      </Tabs>
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <h1 className="text-4xl font-bold mb-8">Welcome to FitNext</h1>
+      <p className="text-lg mb-4">Get fit and track your progress.</p>
+      <div className="space-x-4">
+        <Button onClick={() => router.push('/login')}>Login</Button>
+        <Button variant="secondary" onClick={() => router.push('/signup')}>
+          Sign Up
+        </Button>
+      </div>
     </div>
   );
 }
