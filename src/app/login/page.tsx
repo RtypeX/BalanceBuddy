@@ -17,6 +17,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     if (email === 'test@test.com' && password === 'password') {
       localStorage.setItem('user', JSON.stringify({email: 'test@test.com'}));
+      localStorage.setItem('setupComplete', 'true');
       toast({
         title: 'Login successful',
         description: 'You are now logged in.',
