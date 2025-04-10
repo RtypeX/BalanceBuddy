@@ -28,7 +28,7 @@ const Signup: React.FC = () => {
       title: 'Signup successful',
       description: 'You are now signed up. Please login.',
     });
-    router.push('/login');
+    router.push('/setup');
   };
 
   return (

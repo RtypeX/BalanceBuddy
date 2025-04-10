@@ -9,8 +9,13 @@ export default function StartScreen() {
 
   useEffect(() => {
     const user = localStorage.getItem('user');
+    const setupComplete = localStorage.getItem('setupComplete');
     if (user) {
-      router.push('/home');
+      if (setupComplete) {
+        router.push('/home');
+      } else {
+        router.push('/setup');
+      }
     }
   }, [router]);
 
