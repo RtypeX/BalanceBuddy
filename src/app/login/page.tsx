@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
+import {Avatar, AvatarFallback} from "@/components/ui/avatar";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -34,6 +35,9 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <Avatar className="mb-8 h-24 w-24">
+        <AvatarFallback>BB</AvatarFallback>
+      </Avatar>
       <h1 className="text-3xl font-bold mb-8">Login</h1>
       <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-80">
         <div>
@@ -73,3 +77,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+

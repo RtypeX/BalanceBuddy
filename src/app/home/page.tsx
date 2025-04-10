@@ -9,6 +9,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import {useRouter} from "next/navigation";
 import {useEffect} from "react";
 import {Button} from "@/components/ui/button";
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 
 export default function Home() {
   const router = useRouter();
@@ -28,11 +29,17 @@ export default function Home() {
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-5">
-        <h1 className="text-3xl font-bold">FitNext</h1>
-        <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+        <h1 className="text-3xl font-bold">BalanceBuddy</h1>
+        <div className="flex items-center space-x-4">
+          <Avatar>
+            <AvatarImage src="https://picsum.photos/50/50" alt="User Avatar"/>
+            <AvatarFallback>BB</AvatarFallback>
+          </Avatar>
+          <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+        </div>
       </div>
 
-      <Tabs defaultvalue="exercises" className="w-[400px]">
+      <Tabs defaultValue="exercises" className="w-[400px]">
         <TabsList>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
           <TabsTrigger value="builder">Workout Builder</TabsTrigger>
@@ -59,3 +66,4 @@ export default function Home() {
     </div>
   );
 }
+
