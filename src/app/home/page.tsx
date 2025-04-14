@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -10,6 +11,7 @@ import {useRouter} from "next/navigation";
 import {useEffect} from "react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+import {ModeToggle} from "@/components/ModeToggle";
 
 export default function Home() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function Home() {
       <div className="flex justify-between items-center mb-5">
         <h1 className="text-3xl font-bold">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
+          <ModeToggle />
           <Avatar>
             <AvatarImage src="https://picsum.photos/50/50" alt="User Avatar"/>
             <AvatarFallback>BB</AvatarFallback>
@@ -66,4 +69,3 @@ export default function Home() {
     </div>
   );
 }
-

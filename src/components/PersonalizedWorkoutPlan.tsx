@@ -7,6 +7,7 @@ import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Textarea} from "@/components/ui/textarea";
 import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
 
 const PersonalizedWorkoutPlan: React.FC = () => {
   const [fitnessGoals, setFitnessGoals] = useState('');
@@ -36,22 +37,22 @@ const PersonalizedWorkoutPlan: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-4">Personalized Workout Plan</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="fitnessGoals" className="block text-sm font-medium text-gray-700">
+          <Label htmlFor="fitnessGoals">
             Fitness Goals
-          </label>
+          </Label>
           <Textarea
             id="fitnessGoals"
             value={fitnessGoals}
             onChange={(e) => setFitnessGoals(e.target.value)}
             placeholder="e.g., lose weight, build muscle"
             required
-            className="mt-1 p-2 border rounded-md w-full"
+            className="mt-1"
           />
         </div>
         <div>
-          <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700">
+          <Label htmlFor="experienceLevel">
             Experience Level
-          </label>
+          </Label>
           <Input
             type="text"
             id="experienceLevel"
@@ -59,26 +60,26 @@ const PersonalizedWorkoutPlan: React.FC = () => {
             onChange={(e) => setExperienceLevel(e.target.value)}
             placeholder="e.g., beginner, intermediate, advanced"
             required
-            className="mt-1 p-2 border rounded-md w-full"
+            className="mt-1"
           />
         </div>
         <div>
-          <label htmlFor="availableEquipment" className="block text-sm font-medium text-gray-700">
+          <Label htmlFor="availableEquipment">
             Available Equipment
-          </label>
+          </Label>
           <Textarea
             id="availableEquipment"
             value={availableEquipment}
             onChange={(e) => setAvailableEquipment(e.target.value)}
             placeholder="e.g., dumbbells, bodyweight only"
             required
-            className="mt-1 p-2 border rounded-md w-full"
+            className="mt-1"
           />
         </div>
         <div>
-          <label htmlFor="workoutDuration" className="block text-sm font-medium text-gray-700">
+          <Label htmlFor="workoutDuration">
             Workout Duration (minutes)
-          </label>
+          </Label>
           <Input
             type="number"
             id="workoutDuration"
@@ -86,13 +87,13 @@ const PersonalizedWorkoutPlan: React.FC = () => {
             onChange={(e) => setWorkoutDuration(e.target.value)}
             placeholder="e.g., 30, 45, 60"
             required
-            className="mt-1 p-2 border rounded-md w-full"
+            className="mt-1"
           />
         </div>
         <div>
-          <label htmlFor="workoutFrequency" className="block text-sm font-medium text-gray-700">
+          <Label htmlFor="workoutFrequency">
             Workout Frequency (days per week)
-          </label>
+          </Label>
           <Input
             type="number"
             id="workoutFrequency"
@@ -100,7 +101,7 @@ const PersonalizedWorkoutPlan: React.FC = () => {
             onChange={(e) => setWorkoutFrequency(e.target.value)}
             placeholder="e.g., 3, 4, 5"
             required
-            className="mt-1 p-2 border rounded-md w-full"
+            className="mt-1"
           />
         </div>
         <Button type="submit">Generate Workout Plan</Button>
