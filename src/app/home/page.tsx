@@ -1,4 +1,3 @@
-
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -61,7 +60,7 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-ios-dark-gray shadow-md">
+      <div className="flex items-center justify-between p-4 bg-ios-light-gray dark:bg-ios-dark-gray shadow-md">
         <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
           <ModeToggle/>
