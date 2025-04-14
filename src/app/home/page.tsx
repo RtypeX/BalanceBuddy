@@ -4,10 +4,9 @@ import ExerciseList from '@/components/ExerciseList';
 import WorkoutBuilder from '@/components/WorkoutBuilder';
 import ProgressTracker from '@/components/ProgressTracker';
 import Profile from '@/components/Profile';
-import PersonalizedWorkoutPlan from '@/components/PersonalizedWorkoutPlan';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import {useRouter} from "next/navigation";
-import {useEffect, useState} from "react";
+import {useEffect, useState, useRef} from "react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {ModeToggle} from "@/components/ModeToggle";
@@ -18,11 +17,11 @@ import {ScrollArea} from "@/components/ui/scroll-area";
 
 export default function Home() {
   const router = useRouter();
-  const [advice, setAdvice] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [chatHistory, setChatHistory] = useState<
     { type: 'query' | 'advice'; text: string }[]
   >([]);
+  const chatHistoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -30,6 +29,15 @@ export default function Home() {
       router.push('/');
     }
   }, [router]);
+
+  useEffect(() => {
+    // Scroll to bottom when chat history changes
+    chatHistoryRef.current?.scrollTo({
+      top: chatHistoryRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [chatHistory]);
+
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -44,7 +52,6 @@ export default function Home() {
 
     const input: WorkoutAdviceInput = {query: query};
     const adviceResult = await getWorkoutAdvice(input);
-    setAdvice(adviceResult.advice);
     setChatHistory(prev => [...prev, { type: 'advice', text: adviceResult.advice }]);
     setQuery('');
   };
@@ -82,7 +89,7 @@ export default function Home() {
         </TabsContent>
         <TabsContent value="balancebot">
           <div className="flex flex-col h-[500px]">
-            <ScrollArea className="flex-grow">
+            <div ref={chatHistoryRef} className="flex-grow overflow-y-auto">
               <Card className="mb-4">
                 <CardContent className="p-4">
                   {chatHistory.map((item, index) => (
@@ -96,7 +103,7 @@ export default function Home() {
                   ))}
                 </CardContent>
               </Card>
-            </ScrollArea>
+            </div>
             <form onSubmit={handleChatSubmit} className="mt-4">
               <div className="flex">
                 <Textarea
@@ -117,3 +124,4 @@ export default function Home() {
     </div>
   );
 }
+
