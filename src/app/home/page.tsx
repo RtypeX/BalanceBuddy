@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -14,6 +15,7 @@ import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import {ScrollArea} from "@/components/ui/scroll-area";
+import {cn} from "@/lib/utils";
 
 export default function Home() {
   const router = useRouter();
@@ -57,9 +59,10 @@ export default function Home() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-5">
-        <h1 className="text-3xl font-bold">BalanceBuddy</h1>
+    <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 bg-white dark:bg-ios-dark-gray shadow-md">
+        <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
           <ModeToggle/>
           <Avatar>
@@ -70,58 +73,77 @@ export default function Home() {
         </div>
       </div>
 
-      <Tabs defaultValue="exercises" className="w-full">
-        <TabsList>
-          <TabsTrigger value="exercises">Exercises</TabsTrigger>
-          <TabsTrigger value="builder">Workout Builder</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="balancebot">BalanceBot</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+      {/* Tabs */}
+      <Tabs defaultValue="exercises" className="flex-1 flex flex-col">
+        <TabsList className="flex justify-around bg-ios-light-gray dark:bg-ios-dark-gray p-2 rounded-full">
+          <TabsTrigger value="exercises"
+                       className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
+            Exercises
+          </TabsTrigger>
+          <TabsTrigger value="builder"
+                       className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
+            Workout
+          </TabsTrigger>
+          <TabsTrigger value="progress"
+                       className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
+            Progress
+          </TabsTrigger>
+          <TabsTrigger value="balancebot"
+                       className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
+            BalanceBot
+          </TabsTrigger>
+          <TabsTrigger value="profile"
+                       className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
+            Profile
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="exercises">
-          <ExerciseList/>
-        </TabsContent>
-        <TabsContent value="builder">
-          <WorkoutBuilder/>
-        </TabsContent>
-        <TabsContent value="progress">
-          <ProgressTracker/>
-        </TabsContent>
-        <TabsContent value="balancebot">
-          <div className="flex flex-col h-[500px]">
-            <div ref={chatHistoryRef} className="flex-grow overflow-y-auto">
-              <Card className="mb-4">
-                <CardContent className="p-4">
-                  {chatHistory.map((item, index) => (
-                    <div key={index}
-                         className={`mb-2 ${item.type === 'query' ? 'text-right' : 'text-left'}`}>
-                      <span
-                        className={`inline-block p-2 rounded-lg ${item.type === 'query' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                        {item.text}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-            <form onSubmit={handleChatSubmit} className="mt-4">
-              <div className="flex">
-                <Textarea
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Ask me anything about workouts!"
-                  className="flex-grow mr-2"
-                />
-                <Button type="submit">Send</Button>
+
+        {/* Tab Content */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          <TabsContent value="exercises">
+            <ExerciseList/>
+          </TabsContent>
+          <TabsContent value="builder">
+            <WorkoutBuilder/>
+          </TabsContent>
+          <TabsContent value="progress">
+            <ProgressTracker/>
+          </TabsContent>
+          <TabsContent value="balancebot">
+            <div className="flex flex-col h-[500px]">
+              <div ref={chatHistoryRef} className="flex-grow overflow-y-auto">
+                <Card className="mb-4">
+                  <CardContent className="p-4">
+                    {chatHistory.map((item, index) => (
+                      <div key={index}
+                           className={`mb-2 ${item.type === 'query' ? 'text-right' : 'text-left'}`}>
+                        <span
+                          className={`inline-block p-2 rounded-lg ${item.type === 'query' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                          {item.text}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
               </div>
-            </form>
-          </div>
-        </TabsContent>
-        <TabsContent value="profile">
-          <Profile/>
-        </TabsContent>
+              <form onSubmit={handleChatSubmit} className="mt-4">
+                <div className="flex">
+                  <Textarea
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Ask me anything about workouts!"
+                    className="flex-grow mr-2"
+                  />
+                  <Button type="submit">Send</Button>
+                </div>
+              </form>
+            </div>
+          </TabsContent>
+          <TabsContent value="profile">
+            <Profile/>
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );
 }
-

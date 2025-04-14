@@ -9,7 +9,7 @@ body {
 
 @layer base {
   :root {
-    --background: 220 20% 90%;
+    --background: 220 20% 95%;
     --foreground: 220 30% 10%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
@@ -37,6 +37,12 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --ios-blue: 217 100% 50%;
+    --ios-light-gray: 220 10% 98%;
+    --ios-dark-gray: 220 15% 20%;
+    --ios-light-background: 220 20% 95%;
+    --ios-dark-background: 220 30% 12%;
   }
   .dark {
     --background: 220 30% 10%;
@@ -66,6 +72,12 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --ios-blue: 217 100% 65%;
+    --ios-light-gray: 220 15% 20%;
+    --ios-dark-gray: 220 10% 98%;
+    --ios-light-background: 220 30% 12%;
+    --ios-dark-background: 220 20% 95%;
   }
 }
 
