@@ -9,75 +9,75 @@ body {
 
 @layer base {
   :root {
-    --background: 120 20% 98%; /* Light green background */
-    --foreground: 120 30% 10%; /* Dark green foreground */
+    --background: 142 53% 94%;
+    --foreground: 150 20% 8%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 120 50% 50%; /* Medium green primary */
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 60 15% 90%; /* Light yellow secondary */
-    --secondary-foreground: 60 20% 10%;
-    --muted: 60 15% 90%;
-    --muted-foreground: 60 30% 40%;
-    --accent: 40 80% 50%; /* Orange accent */
+    --secondary: 142 33% 89%;
+    --secondary-foreground: 150 20% 10%;
+    --muted: 142 33% 89%;
+    --muted-foreground: 150 11% 45%;
+    --accent: 142 76% 36%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 60 10% 80%;
-    --input: 60 10% 80%;
-    --ring: 120 50% 50%; /* Medium green ring */
+    --border: 150 20% 80%;
+    --input: 150 20% 80%;
+    --ring: 142 76% 36%;
     --radius: 0.8rem;
-    --sidebar-background: 120 10% 98%; /* Lighter green sidebar */
+    --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 120 30% 20%; /* Darker green sidebar primary */
+    --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 60 4.8% 95.9%;
+    --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 60 13% 91%;
-    --sidebar-ring: 120 50% 50%; /* Medium green sidebar ring */
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
 
     --ios-blue: 217 100% 50%;
     --ios-light-gray: 220 10% 98%;
     --ios-dark-gray: 220 15% 20%;
-    --ios-light-background: 120 20% 95%; /* Light green iOS background */
+    --ios-light-background: 220 20% 95%;
     --ios-dark-background: 220 30% 12%;
   }
   .dark {
-    --background: 120 30% 10%; /* Dark green background */
-    --foreground: 60 20% 90%; /* Light yellow foreground */
+    --background: 150 11% 15%;
+    --foreground: 142 33% 95%;
     --card: 0 0% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 120 70% 50%; /* Bright green primary */
+    --primary: 142 76% 66%;
     --primary-foreground: 0 0% 9%;
-    --secondary: 60 30% 20%; /* Dark yellow secondary */
-    --secondary-foreground: 60 20% 90%;
-    --muted: 60 30% 20%;
-    --muted-foreground: 60 20% 60%;
-    --accent: 40 70% 50%; /* Orange accent */
+    --secondary: 150 11% 22%;
+    --secondary-foreground: 142 33% 90%;
+    --muted: 150 11% 22%;
+    --muted-foreground: 150 11% 62%;
+    --accent: 142 76% 66%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 60 30% 20%;
-    --input: 60 30% 20%;
-    --ring: 120 70% 50%; /* Bright green ring */
-    --sidebar-background: 120 5.9% 10%; /* Dark green sidebar */
-    --sidebar-foreground: 60 4.8% 95.9%; /* Light yellow sidebar foreground */
-    --sidebar-primary: 120 76.3% 48%; /* Green sidebar primary */
+    --border: 150 11% 22%;
+    --input: 150 11% 22%;
+    --ring: 142 76% 66%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 60 3.7% 15.9%;
-    --sidebar-accent-foreground: 60 4.8% 95.9%;
-    --sidebar-border: 60 3.7% 15.9%;
-    --sidebar-ring: 120 70% 50%; /* Bright green sidebar ring */
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
 
     --ios-blue: 217 100% 65%;
     --ios-light-gray: 220 15% 20%;
     --ios-dark-gray: 220 10% 98%;
-    --ios-light-background: 120 30% 12%; /* Dark green iOS background */
-    --ios-dark-background: 120 20% 95%; /* Light green iOS background */
+    --ios-light-background: 220 30% 12%;
+    --ios-dark-background: 220 20% 95%;
   }
 }
 
@@ -89,4 +89,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
