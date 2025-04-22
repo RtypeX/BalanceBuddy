@@ -15,7 +15,7 @@ export default function StartScreen() {
       if (setupComplete) {
         router.push('/home');
       } else {
-        router.push('/setup');
+        router.push('/onboarding/1');
       }
     }
   }, [router]);
@@ -36,4 +36,3 @@ export default function StartScreen() {
     </div>
   );
 }
-
