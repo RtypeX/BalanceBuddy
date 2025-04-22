@@ -8,7 +8,7 @@ import {Progress} from "@/components/ui/progress";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {useState} from "react";
-import {supabase} from "@/lib/supabaseClient";
+import {getSupabase} from "@/lib/supabaseClient";
 import {useToast} from "@/hooks/use-toast";
 
 interface OnboardingPageProps {
@@ -60,6 +60,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
   };
 
   const completeSignUp = async () => {
+    const supabase = getSupabase();
     try {
       const {data: authData, error: authError} = await supabase.auth.signUp({
         email: email,
@@ -263,5 +264,3 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
 };
 
 export default OnboardingPage;
-
-    
