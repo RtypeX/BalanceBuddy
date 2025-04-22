@@ -27,9 +27,9 @@ const Signup: React.FC = () => {
     localStorage.setItem('user', JSON.stringify({email}));
     toast({
       title: 'Signup successful',
-      description: 'You are now signed up. Please login.',
+      description: 'You are now signed up. Taking you to onboarding...',
     });
-    router.push('/setup');
+    router.push('/onboarding/1'); // Redirect to the first onboarding page
   };
 
   return (
@@ -76,4 +76,3 @@ const Signup: React.FC = () => {
 };
 
 export default Signup;
-
