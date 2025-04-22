@@ -11,13 +11,12 @@ export default function StartScreen() {
   useEffect(() => {
     const user = localStorage.getItem('user');
     const setupComplete = localStorage.getItem('setupComplete');
-    if (user) {
-      if (setupComplete) {
-        router.push('/home');
-      } else {
+    if (user && setupComplete) {
+      router.push('/home');
+    } else if (user && !setupComplete) {
         router.push('/onboarding/1');
-      }
     }
+  
   }, [router]);
 
   return (
@@ -29,7 +28,7 @@ export default function StartScreen() {
       <p className="text-lg mb-4">Find your balance.</p>
       <div className="space-x-4">
         <Button onClick={() => router.push('/login')}>Login</Button>
-        <Button variant="secondary" onClick={() => router.push('/signup')}>
+        <Button variant="secondary" onClick={() => router.push('/onboarding/1')}>
           Sign Up
         </Button>
       </div>

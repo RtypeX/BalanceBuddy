@@ -1,21 +1,14 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+const supabaseUrl = 'https://fjgrhtfjwsmfmcrqenon.supabase.co/';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZ3JodGZqd3NtZm1jcnFlbm9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzNDU3ODAsImV4cCI6MjA2MDkyMTc4MH0.2AKk7TPjsIoGD2syfSl9FDgIO3_0ulSOijXYUptSGI0';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fjgrhtfjwsmfmcrqenon.supabase.co/';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZ3JodGZqd3NtZm1jcnFlbm9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzNDU3ODAsImV4cCI6MjA2MDkyMTc4MH0.2AKk7TPjsIoGD2syfSl9FDgIO3_0ulSOijXYUptSGI0';
+let supabase: SupabaseClient;
 
-let supabase;
-
-export const getSupabase = () => {
+export const getSupabase = (): SupabaseClient => {
   if (!supabase) {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error(
-        'Supabase URL or Anon Key not provided. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables are set.'
-      );
-      return null;
-    }
     supabase = createClient(supabaseUrl, supabaseAnonKey);
   }
   return supabase;
-};
+}
