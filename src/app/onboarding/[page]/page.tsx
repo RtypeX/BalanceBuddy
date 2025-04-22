@@ -35,12 +35,12 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
     case 'profile':
       return <ProfileForm formData={formData} setFormData={setFormData} />;
     default: {
-         return (
+      return (
         <CardHeader>
-                <CardTitle>Invalid Step</CardTitle>
+          <CardTitle>Invalid Step</CardTitle>
         </CardHeader>
-         )
-        }
+      )
+    }
   }
 };
 
@@ -52,17 +52,17 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element 
   const { toast } = useToast();
 
   const getStepTitle = () => {
-        switch (currentStep) {
-            case 'signup':
-                return 'Create Your Account';
-            case 'personal-info':
-                return 'Personal Information';
-            case 'profile':
-                return 'Profile';
-            default:
-                return 'Onboarding';
-        }
-    };
+    switch (currentStep) {
+      case 'signup':
+        return 'Create Your Account';
+      case 'personal-info':
+        return 'Personal Information';
+      case 'profile':
+        return 'Profile';
+      default:
+        return 'Onboarding';
+    }
+  };
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -79,28 +79,28 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element 
       router.push(`/onboarding/${pageNumber + 1}`);
     } else {
       completeSignUp();
-     }
+    }
   };
 
   const handleBack = () => {
     if (pageNumber > 1) {
       router.push(`/onboarding/${pageNumber - 1}`);
     } else {
-          router.push('/');
+      router.push('/');
     }
   };
 
   const completeSignUp = async (): Promise<void> => {
     const supabase = getSupabase();
     try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-                data: {
-                    full_name: formData.name,
-              },
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
           },
+        },
       });
 
       if (authError) {
@@ -114,12 +114,14 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element 
 
       const userId = authData.user?.id;
       if (!userId) {
-         toast({
+        toast({
+          variant: "destructive",
           title: 'Signup failed',
           description: 'Could not retrieve user ID.',
         });
         return;
       }
+
       const { error: userError } = await supabase
         .from("users")
         .insert([
@@ -143,43 +145,44 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element 
         return;
       }
 
-      localStorage.setItem('user', JSON.stringify({email: formData.email}));
-      // localStorage.setItem('setupComplete', 'true'); // Fixed: Only set setupComplete after successful signup
+      localStorage.setItem('user', JSON.stringify({ email: formData.email }));
+      localStorage.setItem('setupComplete', 'true'); // Fixed: Only set setupComplete after successful signup
       toast({
         title: 'Signup successful',
         description: 'You are now signed up and your profile has been created.',
       });
-        router.push('/home');
+      router.push('/home');
     } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Sign up failed',
-            description: error.message,
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Sign up failed',
+        description: error.message,
+      });
     }
-};
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <Card className="w-96">
         <CardHeader>
-                <CardTitle>{getStepTitle()}</CardTitle>
+          <CardTitle>{getStepTitle()}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Progress value={progress} className='mb-4'/>
-            <OnboardingStepComponent step={currentStep} formData={formData} setFormData={setFormData} />          <div className='flex justify-between'>
+          <Progress value={progress} className='mb-4' />
+          <OnboardingStepComponent step={currentStep} formData={formData} setFormData={setFormData} />          <div className='flex justify-between'>
             <Button variant="secondary" onClick={handleBack} disabled={pageNumber === 1}>
               Back
             </Button>
             {pageNumber < totalPages ? (
-                <Button onClick={handleNext}>
-                  Next
-                </Button>
+              <Button onClick={handleNext}>
+                Next
+              </Button>
             ) : (
-                <Button onClick={completeSignUp}>
-                  Complete
+              <Button onClick={completeSignUp}>
+                Complete
 
-                </Button>
+              </Button>
             )}
           </div>
         </CardContent>
@@ -245,18 +248,18 @@ interface PersonalInfoFormProps {
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormData }) => {
   return (
     <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="age">Age</Label>
-            <Input
-              type="number"
-              id="age"
-              value={formData.age}
-              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-              placeholder="Your Age"
-              required
-            className="mt-1"
-            />
-          </div>
+      <div className="space-y-2">
+        <Label htmlFor="age">Age</Label>
+        <Input
+          type="number"
+          id="age"
+          value={formData.age}
+          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+          placeholder="Your Age"
+          required
+          className="mt-1"
+        />
+      </div>
     </div>
   );
 };
