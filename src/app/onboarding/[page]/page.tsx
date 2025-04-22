@@ -45,7 +45,7 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 };
 
 const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element => {
-  const { page } = params;
+  const page = params.page;
   const router = useRouter();
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
