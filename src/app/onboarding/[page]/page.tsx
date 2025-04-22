@@ -8,6 +8,8 @@ import {Progress} from "@/components/ui/progress";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {useState} from "react";
+import {supabase} from "@/lib/supabaseClient";
+import {useToast} from "@/hooks/use-toast";
 
 interface OnboardingPageProps {
   params: {
@@ -19,6 +21,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
   const {page} = params;
   const router = useRouter();
   const pageNumber = parseInt(page);
+  const {toast} = useToast();
 
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -34,8 +37,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
     if (pageNumber < totalPages) {
       router.push(`/onboarding/${pageNumber + 1}`);
     } else {
-      localStorage.setItem('setupComplete', 'true');
-      router.push('/home');
+      completeSignUp();
     }
   };
 
@@ -55,6 +57,78 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
     localStorage.setItem('email', email);
     localStorage.setItem('password', password);
     handleNext();
+  };
+
+  const completeSignUp = async () => {
+    try {
+      const {data: authData, error: authError} = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
+
+      if (authError) {
+        toast({
+          variant: 'destructive',
+          title: 'Signup failed',
+          description: authError.message,
+        });
+        return;
+      }
+
+      const userId = authData.user?.id;
+      if (!userId) {
+        toast({
+          variant: 'destructive',
+          title: 'Signup failed',
+          description: 'Could not retrieve user ID.',
+        });
+        return;
+      }
+      const {error: userError} = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            full_name: name,
+            age: parseInt(age),
+            height: parseInt(height),
+            weight: parseInt(weight),
+            email: email,
+          },
+        ]);
+
+      if (userError) {
+        toast({
+          variant: 'destructive',
+          title: 'Profile creation failed',
+          description: userError.message,
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      localStorage.setItem('supabase.auth.token', JSON.stringify(authData.session));
+      localStorage.setItem('supabase.auth.token.expiry', JSON.stringify(authData.session?.expires_at));
+
+      localStorage.setItem('user', JSON.stringify({email: email}));
+      localStorage.setItem('setupComplete', 'true');
+      toast({
+        title: 'Signup successful',
+        description: 'You are now signed up and your profile has been created.',
+      });
+      router.push('/home');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Signup failed',
+        description: error.message,
+      });
+    }
   };
 
   return (
@@ -189,3 +263,5 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({params}) => {
 };
 
 export default OnboardingPage;
+
+    

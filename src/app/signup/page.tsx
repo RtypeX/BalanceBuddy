@@ -14,31 +14,13 @@ const Signup: React.FC = () => {
   const router = useRouter();
   const {toast} = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password.length < 6) {
-      toast({
-        variant: 'destructive',
-        title: 'Signup failed',
-        description: 'Password must be at least 6 characters.',
-      });
-      return;
-    }
-    localStorage.setItem('user', JSON.stringify({email}));
-    toast({
-      title: 'Signup successful',
-      description: 'You are now signed up. Taking you to onboarding...',
-    });
-    router.push('/onboarding/1'); // Redirect to the first onboarding page
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <Avatar className="mb-8 h-24 w-24">
         <AvatarFallback>BB</AvatarFallback>
       </Avatar>
       <h1 className="text-3xl font-bold mb-8">Sign Up</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-80">
+      <form className="flex flex-col space-y-4 w-80">
         <div>
           <Label htmlFor="email">Email</Label>
           <Input
@@ -63,7 +45,7 @@ const Signup: React.FC = () => {
             className="mt-1"
           />
         </div>
-        <Button type="submit">Sign Up</Button>
+        <Button type="submit" onClick={() => router.push('/onboarding/1')}>Sign Up</Button>
       </form>
       <p className="mt-4">
         Already have an account?
@@ -76,3 +58,5 @@ const Signup: React.FC = () => {
 };
 
 export default Signup;
+
+    
