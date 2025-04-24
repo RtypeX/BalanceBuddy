@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {useState} from 'react';
@@ -7,6 +8,9 @@ import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirebase } from '@/lib/firebaseClient';
+
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,21 +20,31 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'test@test.com' && password === 'password') {
-      localStorage.setItem('user', JSON.stringify({email: 'test@test.com'}));
-      localStorage.setItem('setupComplete', 'true');
-      toast({
-        title: 'Login successful',
-        description: 'You are now logged in.',
+
+    const firebase = getFirebase();
+    const auth = getAuth(firebase.app);
+
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed in
+        const user = userCredential.user;
+        localStorage.setItem('user', JSON.stringify({ email: user.email }));
+        localStorage.setItem('setupComplete', 'true'); // Assuming setup is complete on login
+        toast({
+          title: 'Login successful',
+          description: 'You are now logged in.',
+        });
+        router.push('/home');
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: errorMessage,
+        });
       });
-      router.push('/home');
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Login failed',
-        description: 'Invalid credentials.',
-      });
-    }
   };
 
   return (
@@ -77,4 +91,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-

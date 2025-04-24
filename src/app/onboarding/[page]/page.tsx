@@ -1,14 +1,17 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { getSupabase } from '@/lib/supabaseClient';
+import { getFirebase } from '@/lib/firebaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 const OnboardingSteps = ['signup', 'personal-info', 'profile'] as const;
 type OnboardingStep = (typeof OnboardingSteps)[number];
@@ -44,7 +47,7 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
   }
 };
 
-const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element => {
+const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }) => {
   const page = params.page;
   const router = useRouter();
   const pageNumber = parseInt(page);
@@ -91,59 +94,28 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }): JSX.Element 
   };
 
   const completeSignUp = async (): Promise<void> => {
-    const supabase = getSupabase();
+    const firebase = getFirebase();
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-          },
-        },
+      const userCredential = await createUserWithEmailAndPassword(
+        firebase.auth,
+        formData.email,
+        formData.password
+      );
+
+      const user = userCredential.user;
+
+      await updateProfile(user, {
+        displayName: formData.name,
       });
 
-      if (authError) {
-        toast({
-          variant: "destructive",
-          title: 'Sign up failed',
-          description: authError.message
-        });
-        return;
-      }
-
-      const userId = authData.user?.id;
-      if (!userId) {
-        toast({
-          variant: "destructive",
-          title: 'Signup failed',
-          description: 'Could not retrieve user ID.',
-        });
-        return;
-      }
-
-      const { error: userError } = await supabase
-        .from("users")
-        .insert([
-          {
-            id: userId,
-            name: formData.name,
-            age: parseInt(formData.age),
-            height: parseInt(formData.height),
-            weight: parseInt(formData.weight),
-            email: formData.email,
-          },
-        ]);
-
-      if (userError) {
-        toast({
-          variant: 'destructive',
-          title: 'Profile creation failed',
-          description: userError.message,
-        });
-        await supabase.auth.signOut();
-        return;
-      }
+      // Store additional user data in Firestore
+      await setDoc(doc(firebase.db, "users", user.uid), {
+        name: formData.name,
+        email: formData.email,
+        age: parseInt(formData.age),
+        height: parseInt(formData.height),
+        weight: parseInt(formData.weight),
+      });
 
       localStorage.setItem('user', JSON.stringify({ email: formData.email }));
       localStorage.setItem('setupComplete', 'true'); // Fixed: Only set setupComplete after successful signup
