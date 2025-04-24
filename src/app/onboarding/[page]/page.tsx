@@ -45,7 +45,8 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const router = useRouter();
-  const [page, setPage] = useState(params.page);
+  const [page, setPage] = useState(() => params.page);
+
   useEffect(() => {
     setPage(params.page);
   }, [params.page]);
