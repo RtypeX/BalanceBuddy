@@ -1,35 +1,38 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, doc, getDoc } from "firebase/firestore";
-import { auth, firestore } from "@/lib/firebaseClient";
+import { collection, doc, getDoc, getDocs, where } from "firebase/firestore";
+import { getFirebase } from "@/lib/firebaseClient";
 
 const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     const fetchProfileData = async () => {
-      try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const userId = user.id;
+      const firebase = getFirebase();
+      if (!firebase) {
+        console.log("Firebase not initialized.");
+        return;
+      }
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userEmail = user.email;
 
-        if (!userId) {
-          console.log("No user ID found in local storage.");
-          setProfileData(null);
-          return;
-        }
+      if (userEmail) {
+        // Fetch user data from Firestore based on email
+        const q = collection(firebase.db, "users");
+        const querySnapshot = await getDocs(q);
 
-        const userDocRef = doc(firestore, 'users', userId);
-        const docSnap = await getDoc(userDocRef);
-
-        if (docSnap.exists()) {
-          setProfileData(docSnap.data());
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((doc) => {
+            if(doc.data().email === userEmail){
+              setProfileData({id: doc.id, ...doc.data()});
+            }
+          });
         } else {
-          console.log("No such document!");
+          console.log("No matching documents.");
           setProfileData(null);
         }
-      } catch (error: any) {
-        console.error("Failed to fetch profile data:", error.message);
-        setProfileData(null);
       }
     };
 
