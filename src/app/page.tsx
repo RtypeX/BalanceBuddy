@@ -5,24 +5,25 @@ import {Button} from '@/components/ui/button'
 import {useEffect, useState} from 'react'
 import {Avatar, AvatarFallback} from '@/components/ui/avatar'
 import {onAuthStateChanged} from 'firebase/auth'
-import {auth} from '@/lib/firebaseClient'
+import {auth, getFirebase} from '@/lib/firebaseClient'
 
 export default function StartScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
-      if(user) {
-        // const setupComplete = localStorage.getItem('setupComplete');
-        // if (!setupComplete) {
-        //   router.push('/onboarding/1');
-        // }
-        
-        router.push('/home');
-      }
+    const firebase = getFirebase();
+    if (firebase && auth) {
+      onAuthStateChanged(auth, (user) => {
+        if(user) {
+          router.push('/home');
+        }
+        setIsLoading(false);
+      });
+    } else {
       setIsLoading(false);
-    })  
+      console.error("Firebase not initialized");
+    }
   }, [router]);
 
   if (isLoading) {
@@ -45,5 +46,3 @@ export default function StartScreen() {
     </div>
   );
 }
-
-
