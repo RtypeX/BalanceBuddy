@@ -1,23 +1,33 @@
 'use client';
 
 import {useRouter} from 'next/navigation';
-import {Button} from '@/components/ui/button';
-import {useEffect} from "react";
-import {Avatar, AvatarFallback} from "@/components/ui/avatar";
+import {Button} from '@/components/ui/button'
+import {useEffect, useState} from 'react'
+import {Avatar, AvatarFallback} from '@/components/ui/avatar'
+import {onAuthStateChanged} from 'firebase/auth'
+import {auth} from '@/lib/firebaseClient'
 
 export default function StartScreen() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    const setupComplete = localStorage.getItem('setupComplete');
-    if (user && setupComplete) {
-      router.push('/home');
-    } else if (user && !setupComplete) {
-        router.push('/onboarding/1');
-    }
-  
+    onAuthStateChanged(auth, (user) => {
+      if(user) {
+        const setupComplete = localStorage.getItem('setupComplete');
+        if (!setupComplete) {
+          router.push('/onboarding/1');
+        }
+        
+        router.push('/home');
+      }
+      setIsLoading(false);
+    })  
   }, [router]);
+
+  if (isLoading) {
+    return <div className="flex flex-col items-center justify-center min-h-screen py-2">Loading...</div>
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -35,3 +45,4 @@ export default function StartScreen() {
     </div>
   );
 }
+

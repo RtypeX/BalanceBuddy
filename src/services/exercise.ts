@@ -1,3 +1,6 @@
+import { collection, getDocs, doc, DocumentData } from 'firebase/firestore';
+import { firestore } from '../lib/firebase';
+
 /**
  * Represents an exercise.
  */
@@ -17,22 +20,26 @@ export interface Exercise {
 }
 
 /**
- * Asynchronously retrieves a list of exercises.
- * @returns A promise that resolves to an array of Exercise objects.
+ * Fetches exercises from Firestore.
+ * @returns A promise resolving to an array of Exercise objects.
  */
 export async function getExercises(): Promise<Exercise[]> {
-  // TODO: Implement this by calling an API.
+  const exercisesCollection = collection(firestore, 'exercises');
+  const exercisesSnapshot = await getDocs(exercisesCollection);
 
-  return [
-    {
-      name: 'Push-ups',
-      description: 'A classic exercise for chest and triceps.',
-      videoUrl: 'https://example.com/pushups.mp4',
-    },
-    {
-      name: 'Squats',
-      description: 'A fundamental exercise for legs and glutes.',
-      videoUrl: 'https://example.com/squats.mp4',
-    },
-  ];
+  const exercises: Exercise[] = exercisesSnapshot.docs.map(doc => {
+    const data = doc.data() as DocumentData;
+    return {
+      name: data.name,
+      description: data.description,
+      videoUrl: data.videoUrl,
+    } as Exercise;
+  });
+
+  return exercises;
 }
+
+
+
+
+

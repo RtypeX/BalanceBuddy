@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { account, databases } from "@/lib/appwriteClient";
+import { collection, doc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "@/lib/firebaseClient";
 
 const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
@@ -8,7 +9,6 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        // 1. Retrieve user data from localStorage
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const userId = user.id;
 
@@ -18,20 +18,15 @@ const Profile: React.FC = () => {
           return;
         }
 
-        // 2. Fetch user profile from database using Appwrite
-        const userProfile = await databases.getDocument(
-          process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-          process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
-          userId
-        );
+        const userDocRef = doc(firestore, 'users', userId);
+        const docSnap = await getDoc(userDocRef);
 
-        if (!userProfile) {
-          console.log("No matching user profile found in database.");
+        if (docSnap.exists()) {
+          setProfileData(docSnap.data());
+        } else {
+          console.log("No such document!");
           setProfileData(null);
-          return;
         }
-
-        setProfileData(userProfile);
       } catch (error: any) {
         console.error("Failed to fetch profile data:", error.message);
         setProfileData(null);

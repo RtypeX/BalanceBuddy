@@ -7,8 +7,8 @@ import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
-import { account } from "@/lib/appwriteClient";
-
+import { auth } from "@/lib/firebaseClient";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,30 +20,31 @@ const Login: React.FC = () => {
     e.preventDefault();
 
     try {
-      // 1. Login using Appwrite
-      const session = await account.createEmailSession(email, password);
+        const userCredential = await signInWithEmailAndPassword(
+            auth,
+            email,
+            password
+        );
 
-      if (!session) {
+      if (!userCredential.user) {
         toast({
-          variant: 'destructive',
-          title: 'Login failed',
+            id: "login-failed",title: 'Login failed',
           description: 'Invalid credentials.',
         });
         return;
       }
 
-      // 2. Store user information in localStorage
-      localStorage.setItem('user', JSON.stringify({ id: session.userId, email: email }));
+      localStorage.setItem('user', JSON.stringify({ id: userCredential.user.uid, email: email }));
       localStorage.setItem('setupComplete', 'true'); // Assuming setup is complete on login
 
       toast({
-        title: 'Login successful',
+          id: "login-success", title: 'Login successful',
         description: 'You are now logged in.',
       });
       router.push('/home');
     } catch (error: any) {
       toast({
-        variant: 'destructive',
+          id: "login-error",
         title: 'Login failed',
         description: error.message,
       });
