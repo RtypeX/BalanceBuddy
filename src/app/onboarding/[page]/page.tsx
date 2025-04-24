@@ -293,3 +293,5 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
 };
 
 export default OnboardingPage;
+
+const OnboardingSteps = ['signup', 'personal-info', 'profile'];
