@@ -48,7 +48,7 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const page = params.page;
+  const page = params.page; // Accessing params.page directly
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
   const { toast } = useToast();
