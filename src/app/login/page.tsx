@@ -35,7 +35,6 @@ const Login: React.FC = () => {
       }
 
       localStorage.setItem('user', JSON.stringify({ id: userCredential.user.uid, email: email }));
-      localStorage.setItem('setupComplete', 'true'); // Assuming setup is complete on login
 
       toast({
           id: "login-success", title: 'Login successful',
@@ -86,7 +85,7 @@ const Login: React.FC = () => {
       </form>
       <p className="mt-4">
         Don't have an account?
-        <Button variant="link" onClick={() => router.push('/signup')}>
+        <Button variant="link" onClick={() => router.push('/onboarding/1')}>
           Sign Up
         </Button>
       </p>

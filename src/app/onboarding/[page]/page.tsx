@@ -5,14 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter} from 'next/navigation';
-import React, { useState, type FC } from 'react';
+import { useRouter, useSearchParams} from 'next/navigation';
+import React, { useState, type FC, useEffect } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import { getFirebase } from "@/lib/firebaseClient";
-import {useSearchParams} from "next/navigation";
-import {useEffect} from 'react'
 
 interface OnboardingPageProps {
   params: {
@@ -46,9 +44,12 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 };
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const page = params.page; // Accessing params.page directly
+  const [page, setPage] = useState(params.page);
+  useEffect(() => {
+    setPage(params.page);
+  }, [params.page]);
+
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
   const { toast } = useToast();
@@ -126,7 +127,6 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
 
       // Store user information in localStorage
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
-      localStorage.setItem('setupComplete', 'true');
 
       toast({id: "user-created",
         title: 'Signup successful',
