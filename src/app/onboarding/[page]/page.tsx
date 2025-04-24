@@ -1,17 +1,14 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { getFirebase } from '@/lib/firebaseClient';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, type FC } from 'react';
 import { Button } from '@/components/ui/button';
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { account, databases } from "@/lib/appwriteClient";
 
 const OnboardingSteps = ['signup', 'personal-info', 'profile'] as const;
 type OnboardingStep = (typeof OnboardingSteps)[number];
@@ -24,7 +21,7 @@ interface OnboardingPageProps {
 
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: any;
+  formData: Record<string, string | number>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -47,9 +44,10 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
   }
 };
 
-const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }) => {
-  const page = params.page;
+const OnboardingPage: FC<OnboardingPageProps> = () => {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const page = searchParams.get('page') || '1';
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
   const { toast } = useToast();
@@ -79,7 +77,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }) => {
   const progress = (pageNumber / totalPages) * 100;
   const handleNext = () => {
     if (pageNumber < totalPages) {
-      router.push(`/onboarding/${pageNumber + 1}`);
+      router.push(`/onboarding?page=${pageNumber + 1}`);
     } else {
       completeSignUp();
     }
@@ -87,43 +85,63 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }) => {
 
   const handleBack = () => {
     if (pageNumber > 1) {
-      router.push(`/onboarding/${pageNumber - 1}`);
+      router.push(`/onboarding?page=${pageNumber - 1}`);
     } else {
       router.push('/');
     }
   };
 
   const completeSignUp = async (): Promise<void> => {
-    const firebase = getFirebase();
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        firebase.auth,
+      // 1. Create user account using Appwrite
+      const user = await account.create(
+        "unique()",
         formData.email,
-        formData.password
+        formData.password,
+        formData.name
       );
 
-      const user = userCredential.user;
+      if (!user) {
+        toast({
+          variant: 'destructive',
+          title: 'Sign up failed',
+          description: 'Failed to create user account.',
+        });
+        return;
+      }
 
-      await updateProfile(user, {
-        displayName: formData.name,
-      });
+      // 2. Create user profile in database
+      const userProfile = await databases.createDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
+        user.$id,
+        {
+          name: formData.name,
+          email: formData.email,
+          age: parseInt(formData.age),
+          height: parseInt(formData.height),
+          weight: parseInt(formData.weight),
+        }
+      );
 
-      // Store additional user data in Firestore
-      await setDoc(doc(firebase.db, "users", user.uid), {
-        name: formData.name,
-        email: formData.email,
-        age: parseInt(formData.age),
-        height: parseInt(formData.height),
-        weight: parseInt(formData.weight),
-      });
+      if (!userProfile) {
+        toast({
+          variant: 'destructive',
+          title: 'Sign up failed',
+          description: 'Failed to create user profile.',
+        });
+        return;
+      }
 
-      localStorage.setItem('user', JSON.stringify({ email: formData.email }));
-      localStorage.setItem('setupComplete', 'true'); // Fixed: Only set setupComplete after successful signup
+      // 3. Store user information in localStorage
+      localStorage.setItem('user', JSON.stringify({ id: user.$id, email: formData.email }));
+      localStorage.setItem('setupComplete', 'true');
+
       toast({
         title: 'Signup successful',
         description: 'You are now signed up and your profile has been created.',
       });
-      router.push('/home');
+      router.push('/');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -164,7 +182,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ params }) => {
 };
 
 interface SignupFormProps {
-  formData: any;
+  formData: Record<string, string | number>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -213,7 +231,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
 };
 
 interface PersonalInfoFormProps {
-  formData: any;
+  formData: Record<string, string | number>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -237,7 +255,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
 };
 
 interface ProfileFormProps {
-  formData: any;
+  formData: Record<string, string | number>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 

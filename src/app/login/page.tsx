@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, {useState} from 'react';
@@ -8,8 +7,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirebase } from '@/lib/firebaseClient';
+import { account } from "@/lib/appwriteClient";
 
 
 const Login: React.FC = () => {
@@ -21,30 +19,35 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const firebase = getFirebase();
-    const auth = getAuth(firebase.app);
+    try {
+      // 1. Login using Appwrite
+      const session = await account.createEmailSession(email, password);
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        // Signed in
-        const user = userCredential.user;
-        localStorage.setItem('user', JSON.stringify({ email: user.email }));
-        localStorage.setItem('setupComplete', 'true'); // Assuming setup is complete on login
-        toast({
-          title: 'Login successful',
-          description: 'You are now logged in.',
-        });
-        router.push('/home');
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
+      if (!session) {
         toast({
           variant: 'destructive',
           title: 'Login failed',
-          description: errorMessage,
+          description: 'Invalid credentials.',
         });
+        return;
+      }
+
+      // 2. Store user information in localStorage
+      localStorage.setItem('user', JSON.stringify({ id: session.userId, email: email }));
+      localStorage.setItem('setupComplete', 'true'); // Assuming setup is complete on login
+
+      toast({
+        title: 'Login successful',
+        description: 'You are now logged in.',
       });
+      router.push('/home');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Login failed',
+        description: error.message,
+      });
+    }
   };
 
   return (
