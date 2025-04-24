@@ -11,6 +11,8 @@ import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import { getFirebase } from "@/lib/firebaseClient";
+import {useSearchParams} from "next/navigation";
+import {useEffect} from 'react'
 
 const OnboardingSteps = ['signup', 'personal-info', 'profile'] as const;
 type OnboardingStep = (typeof OnboardingSteps)[number];
@@ -47,12 +49,20 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 };
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
-  const page = params.page
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const page = params.page
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
   const { toast } = useToast();
   const firebase = getFirebase();
+
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      router.push('/'); // Redirect to start if not logged in
+    }
+  }, [router]);
 
   const getStepTitle = () => {
     switch (currentStep) {
@@ -125,7 +135,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         title: 'Signup successful',
         description: 'You are now signed up and your profile has been created.',
       });
-      router.push('/');
+      router.push('/home');
     } catch (error: any) {
       let errorMessage = "An unknown error occurred.";
         if (error.code) {

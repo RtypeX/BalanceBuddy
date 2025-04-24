@@ -14,10 +14,10 @@ export default function StartScreen() {
   useEffect(() => {
     onAuthStateChanged(auth, (user) => {
       if(user) {
-        const setupComplete = localStorage.getItem('setupComplete');
-        if (!setupComplete) {
-          router.push('/onboarding/1');
-        }
+        // const setupComplete = localStorage.getItem('setupComplete');
+        // if (!setupComplete) {
+        //   router.push('/onboarding/1');
+        // }
         
         router.push('/home');
       }
@@ -45,4 +45,5 @@ export default function StartScreen() {
     </div>
   );
 }
+
 
