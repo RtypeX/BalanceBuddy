@@ -10,12 +10,11 @@ import {useEffect, useState, useRef} from "react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {ModeToggle} from "@/components/ModeToggle";
-import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
+import {getWorkoutAdvice} from "@/ai/flows/workout-advice";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import {cn} from "@/lib/utils";
 import Image from 'next/image';
+import FastingCalendar from "@/components/FastingCalendar";
 
 export default function Home() {
   const router = useRouter();
@@ -32,43 +31,17 @@ export default function Home() {
     }
   }, [router]);
 
-  useEffect(() => {
-    // Scroll to bottom when chat history changes
-    chatHistoryRef.current?.scrollTo({
-      top: chatHistoryRef.current.scrollHeight,
-      behavior: 'smooth'
-    });
-  }, [chatHistory]);
-
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
-  };
-
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-
-    setChatHistory(prev => [...prev, { type: 'query', text: query }]);
-
-    const input: WorkoutAdviceInput = {query: query};
-    const adviceResult = await getWorkoutAdvice(input);
-    setChatHistory(prev => [...prev, { type: 'advice', text: adviceResult.advice }]);
-    setQuery('');
-  };
-
   return (
     <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-ios-light-gray dark:bg-ios-dark-gray shadow-md">
-      <Image
-            src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
-            alt="BalanceBuddy Logo"
-            width={75}
-            height={75}
-            className="mr-2"
-          />
+        <Image
+          src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+          alt="BalanceBuddy Logo"
+          width={75}
+          height={75}
+          className="mr-2"
+        />
         <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
           <ModeToggle/>
@@ -76,7 +49,7 @@ export default function Home() {
             <AvatarImage src="https://picsum.photos/50/50" alt="User Avatar"/>
             <AvatarFallback>BB</AvatarFallback>
           </Avatar>
-          <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+          <Button variant="secondary" onClick={() => router.push('/')}>Logout</Button>
         </div>
       </div>
 
@@ -117,6 +90,7 @@ export default function Home() {
             <ProgressTracker/>
           </TabsContent>
           <TabsContent value="balancebot">
+            {/* Chatbot UI */}
             <div className="flex flex-col h-[500px]">
               <div ref={chatHistoryRef} className="flex-grow overflow-y-auto">
                 <Card className="mb-4">
@@ -154,4 +128,3 @@ export default function Home() {
     </div>
   );
 }
-
