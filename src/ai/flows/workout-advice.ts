@@ -65,11 +65,11 @@ const workoutAdviceFlow = ai.defineFlow<
         return {advice: output.advice};
       } else {
         console.error('Workout advice flow: No advice received from prompt.');
-        return {advice: 'Sorry, I could not generate workout advice at this time.'};
+        return {advice: 'Sorry, I could not generate workout advice at this time. Please try again.'};
       }
     } catch (error: any) {
       console.error('Workout advice flow failed:', error);
-      return {advice: 'An error occurred while generating workout advice.'};
+      return {advice: 'An error occurred while generating workout advice. Please try again later.'};
     }
   }
 );
