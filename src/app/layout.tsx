@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
@@ -34,7 +33,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="bg-background min-h-screen">
+          <div className="bg-background min-svh">
             {children}
             <Toaster/>
           </div>
