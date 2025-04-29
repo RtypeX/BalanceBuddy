@@ -1,14 +1,13 @@
 'use client';
 
-import {useEffect, useRef, useState} from 'react';
-import {Button} from '@/components/ui/button';
-import {Card, CardContent} from '@/components/ui/card';
-import {Textarea} from '@/components/ui/textarea';
-import {getWorkoutAdvice, WorkoutAdviceInput} from '@/ai/flows/workout-advice';
-import {useRouter} from 'next/navigation';
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent} from "@/components/ui/card";
+import {Textarea} from "@/components/ui/textarea";
+import {useEffect, useRef, useState} from "react";
+import {useRouter} from "next/navigation";
 
-const BalanceBotPage = () => {
+export default function BalanceBotPage() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [chatHistory, setChatHistory] = useState<
@@ -23,25 +22,42 @@ const BalanceBotPage = () => {
     }
   }, [chatHistory]);
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
-    setChatHistory(prev => [...prev, { type: 'query', text: query }]);
+    setChatHistory(prev => [...prev, {type: 'query', text: query}]);
+    setQuery('');
+    try {
+      const response = await fetch('/api/chat-with-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({message: query}),
+      });
 
-    const input: WorkoutAdviceInput = {query: query};
-    const adviceResult = await getWorkoutAdvice(input);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    if (adviceResult && adviceResult.advice) {
-      setChatHistory(prev => [...prev, {type: 'advice', text: adviceResult.advice}]);
-    } else {
+      const data = await response.json();
+
+      if (data.advice) {
+        setChatHistory(prev => [...prev, {type: 'advice', text: data.advice}]);
+      } else {
+        setChatHistory(prev => [...prev, {
+          type: 'advice',
+          text: 'Error generating advice. Please try again.',
+        }]);
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch workout advice:", error);
       setChatHistory(prev => [...prev, {
         type: 'advice',
-        text: 'Error generating advice. Please try again.',
+        text: 'Error generating advice. Please try again later.',
       }]);
     }
-
-    setQuery('');
   };
 
   return (
@@ -74,7 +90,7 @@ const BalanceBotPage = () => {
               </div>
             ))}
           </div>
-          <form onSubmit={handleChatSubmit} className="mt-2">
+          <form onSubmit={handleSubmit} className="mt-2">
             <div className="flex space-x-2">
               <Textarea
                 value={query}
@@ -91,6 +107,4 @@ const BalanceBotPage = () => {
       </Card>
     </div>
   );
-};
-
-export default BalanceBotPage;
+}
