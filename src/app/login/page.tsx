@@ -7,8 +7,6 @@ import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
-import { auth } from "@/lib/firebaseClient";
-import { signInWithEmailAndPassword } from "firebase/auth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,38 +14,30 @@ const Login: React.FC = () => {
   const router = useRouter();
   const {toast} = useToast();
 
+  const handleDemoLogin = () => {
+    // Set a demo user in localStorage
+    localStorage.setItem('user', JSON.stringify({ id: 'demo', email: 'demo@example.com' }));
+    toast({
+      id: "demo-login",
+      title: 'Demo Login Successful',
+      description: 'Logged in as demo user.',
+    });
+    router.push('/home');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-        const userCredential = await signInWithEmailAndPassword(
-            auth,
-            email,
-            password
-        );
+    // Add your actual authentication logic here (e.g., Firebase, Supabase)
 
-      if (!userCredential.user) {
-        toast({
-            id: "login-failed",title: 'Login failed',
-          description: 'Invalid credentials.',
-        });
-        return;
-      }
-
-      localStorage.setItem('user', JSON.stringify({ id: userCredential.user.uid, email: email }));
-
-      toast({
-          id: "login-success", title: 'Login successful',
-        description: 'You are now logged in.',
-      });
-      router.push('/home');
-    } catch (error: any) {
-      toast({
-          id: "login-error",
-        title: 'Login failed',
-        description: error.message,
-      });
-    }
+    // For now, let's just set a dummy user in localStorage and redirect
+    localStorage.setItem('user', JSON.stringify({ id: 'dummy', email: email }));
+    toast({
+      id: "login-success",
+      title: 'Login successful',
+      description: 'You are now logged in.',
+    });
+    router.push('/home');
   };
 
   return (
@@ -89,6 +79,9 @@ const Login: React.FC = () => {
           Sign Up
         </Button>
       </p>
+      <Button variant="secondary" onClick={handleDemoLogin}>
+        Demo Login
+      </Button>
     </div>
   );
 };

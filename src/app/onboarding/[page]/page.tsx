@@ -88,6 +88,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const progress = (pageNumber / totalPages) * 100;
   const handleNext = () => {
     if (pageNumber < totalPages) {
+      localStorage.setItem('page', JSON.stringify(pageNumber + 1));
       router.push(`/onboarding/${pageNumber + 1}`);
     } else {
       completeSignUp();
@@ -96,6 +97,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
 
   const handleBack = () => {
     if (pageNumber > 1) {
+      localStorage.setItem('page', JSON.stringify(pageNumber - 1));
       router.push(`/onboarding/${pageNumber - 1}`);
     } else {
       router.push('/');
