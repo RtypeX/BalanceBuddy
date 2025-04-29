@@ -8,8 +8,8 @@
  * - WorkoutAdviceOutput - The return type for the getWorkoutAdvice function.
  */
 
-import {getAi} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import {generate} from '@/ai/ai-instance';
+import {z} from 'zod';
 
 const WorkoutAdviceInputSchema = z.object({
   query: z.string().describe('The user\u0027s query about workouts.'),
@@ -21,62 +21,30 @@ const WorkoutAdviceOutputSchema = z.object({
 });
 export type WorkoutAdviceOutput = z.infer<typeof WorkoutAdviceOutputSchema>;
 
+const PROMPT_PREFIX = `You are a helpful workout assistant using gemini ai.
+
+The user will ask a question about working out, and you will provide helpful advice.`;
+
 export async function getWorkoutAdvice(
   input: WorkoutAdviceInput
 ): Promise<WorkoutAdviceOutput> {
-  return workoutAdviceFlow(input);
-}
-
-const workoutAdvicePrompt = (ai: any) => ai.definePrompt({
-  name: 'workoutAdvicePrompt',
-  input: {
-    schema: z.object({
-      query: z
-        .string()
-        .describe('The user\u0027s query about workouts.'),
-    }),
-  },
-  output: {
-    schema: z.object({
-      advice: z.string().describe('The workout advice based on the query.'),
-    }),
-  },
-  prompt: `You are a helpful workout assistant using gemini ai.
-
-  The user will ask a question about working out, and you will provide helpful advice.
-
-  Query: {{query}}
-  `,
-});
-
-const workoutAdviceFlow = (ai: any) => ai.defineFlow<
-  typeof WorkoutAdviceInputSchema,
-  typeof WorkoutAdviceOutputSchema
->(
-  {
-    name: 'workoutAdviceFlow',
-    inputSchema: WorkoutAdviceInputSchema,
-    outputSchema: WorkoutAdviceOutputSchema,
-  },
-  async input => {
-    try {
-      const prompt = workoutAdvicePrompt(ai);
-      const {output} = await prompt(input);
-      if (output && output.advice) {
-        return {advice: output.advice};
-      } else {
-        console.error('Workout advice flow: No advice received from prompt.');
-        return {advice: 'Sorry, I could not generate workout advice at this time. Please try again.'};
-      }
-    } catch (error: any) {
-      console.error('Workout advice flow failed:', error);
-      return {advice: 'An error occurred while generating workout advice. Please try again later.'};
+  try {
+    const prompt = `${PROMPT_PREFIX}\n\nQuery: ${input.query}`;
+    const advice = await generate(prompt);
+    if (advice) {
+      return {advice};
+    } else {
+      console.error('Workout advice flow: No advice received from prompt.');
+      return {
+        advice:
+          'Sorry, I could not generate workout advice at this time. Please try again.',
+      };
     }
+  } catch (error: any) {
+    console.error('Workout advice flow failed:', error);
+    return {
+      advice:
+        'An error occurred while generating workout advice. Please try again later.',
+    };
   }
-);
-
-export async function workoutAdvice(input: WorkoutAdviceInput): Promise<WorkoutAdviceOutput> {
-  const ai = await getAi();
-  const flow = workoutAdviceFlow(ai);
-  return flow(input);
 }
