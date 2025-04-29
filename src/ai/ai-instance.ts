@@ -1,6 +1,8 @@
 'use server';
 
+import {genkit} from '@genkit-ai/core';
 import {GoogleGenerativeAI} from '@google/generative-ai';
+import {z} from 'zod';
 
 const MODEL_NAME = 'gemini-pro';
 
@@ -11,7 +13,7 @@ async function getGenAI() {
     return genAI;
   }
 
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+  const apiKey = "AIzaSyDic31oJDNLfi_uOZCSkfOPhiPKvezH5gI";
   if (!apiKey) {
     throw new Error(
       'Missing GOOGLE_GENAI_API_KEY environment variable.  Did you forget to copy .env.example to .env and populate it with your API key?'
