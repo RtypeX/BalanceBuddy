@@ -38,33 +38,33 @@ const BalanceBotPage = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between p-4">
+    <div className="flex flex-col items-center justify-start min-h-screen py-2">
+      <div className="flex items-center justify-between p-4 w-full max-w-md">
         <h1 className="text-2xl font-semibold">BalanceBot</h1>
         <Button variant="secondary" onClick={() => router.push('/home')}>Back to Home</Button>
       </div>
-      <Card className="w-full max-w-md mx-auto">
-        <CardContent>
-          <div ref={chatHistoryRef} className="space-y-2 max-h-64 overflow-y-auto">
+      <Card className="w-full max-w-md rounded-lg shadow-md">
+        <CardContent className="p-6">
+          <div ref={chatHistoryRef} className="space-y-3 max-h-64 overflow-y-auto mb-4">
             {chatHistory.map((item, index) => (
               <div key={index} className={item.type === 'query' ? 'text-right' : 'text-left'}>
                 <span
-                  className={`inline-block p-2 rounded-lg ${item.type === 'query' ? 'bg-blue-200' : 'bg-gray-200'}`}
+                  className={`inline-block p-3 rounded-xl ${item.type === 'query' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-800'}`}
                 >
                   {item.text}
                 </span>
               </div>
             ))}
           </div>
-          <form onSubmit={handleChatSubmit} className="mt-4">
-            <div className="flex">
+          <form onSubmit={handleChatSubmit} className="mt-2">
+            <div className="flex space-x-2">
               <Textarea
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ask me anything about workouts..."
-                className="flex-grow mr-2"
+                className="flex-grow rounded-xl"
               />
-              <Button type="submit">Send</Button>
+              <Button type="submit" className="rounded-xl">Send</Button>
             </div>
           </form>
         </CardContent>
