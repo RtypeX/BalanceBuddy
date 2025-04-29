@@ -7,6 +7,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
+import Image from 'next/image';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -42,9 +43,13 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <Avatar className="mb-8 h-24 w-24">
-        <AvatarFallback>BB</AvatarFallback>
-      </Avatar>
+      <Image
+            src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+            alt="BalanceBuddy Logo"
+            width={100}
+            height={100}
+            className="mb-8"
+          />
       <h1 className="text-3xl font-bold mb-8">Login</h1>
       <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-80">
         <div>

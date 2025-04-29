@@ -15,6 +15,7 @@ import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {cn} from "@/lib/utils";
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -61,6 +62,13 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-ios-light-gray dark:bg-ios-dark-gray shadow-md">
+      <Image
+            src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+            alt="BalanceBuddy Logo"
+            width={50}
+            height={50}
+            className="mr-2"
+          />
         <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
           <ModeToggle/>
@@ -146,3 +154,4 @@ export default function Home() {
     </div>
   );
 }
+
