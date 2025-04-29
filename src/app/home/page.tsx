@@ -14,16 +14,11 @@ import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
-import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
 import Link from 'next/link';
+import BalanceBotPage from "@/app/balancebot/page";
 
 export default function Home() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [chatHistory, setChatHistory] = useState<
-    { type: 'query' | 'advice'; text: string }[]
-  >([]);
-  const chatHistoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -32,32 +27,10 @@ export default function Home() {
     }
   }, [router]);
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-
-    setChatHistory(prev => [...prev, { type: 'query', text: query }]);
-
-    const input: WorkoutAdviceInput = { query: query };
-    const adviceResult = await getWorkoutAdvice(input);
-
-    if (adviceResult && adviceResult.advice) {
-      setChatHistory(prev => [...prev, { type: 'advice', text: adviceResult.advice }]);
-    } else {
-      setChatHistory(prev => [...prev, { type: 'advice', text: 'Error generating advice. Please try again.' }]);
-    }
-
-    setQuery('');
-    // Scroll to bottom of chat
-    if (chatHistoryRef.current) {
-      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
-    }
-  };
-
   return (
-    <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
+    <div className="flex flex-col h-screen bg-green-100 dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-ios-light-gray dark:bg-ios-dark-gray shadow-md">
+      <div className="flex items-center justify-between p-4 bg-green-200 dark:bg-gray-800 shadow-md">
         <Image
           src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
           alt="BalanceBuddy Logo"
@@ -65,7 +38,7 @@ export default function Home() {
           height={75}
           className="mr-2"
         />
-        <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
+        <h1 className="text-2xl font-semibold text-green-700 dark:text-green-300">BalanceBuddy</h1>
         <div className="flex items-center space-x-4">
           <ModeToggle/>
           <Avatar>
