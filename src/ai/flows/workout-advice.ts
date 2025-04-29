@@ -53,7 +53,7 @@ const workoutAdviceFlow = ai.defineFlow<
   typeof WorkoutAdviceInputSchema,
   typeof WorkoutAdviceOutputSchema
 >(
-  {    
+  {
     name: 'workoutAdviceFlow',
     inputSchema: WorkoutAdviceInputSchema,
     outputSchema: WorkoutAdviceOutputSchema,
