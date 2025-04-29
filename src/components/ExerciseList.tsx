@@ -65,3 +65,4 @@ const ExerciseList: React.FC = () => {
 };
 
 export default ExerciseList;
+

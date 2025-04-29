@@ -1,52 +1,18 @@
 'use client';
 
+import { getFirebase } from '@/lib/firebaseClient';
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, doc, getDoc, getDocs, where } from "firebase/firestore";
-import { getFirebase } from "@/lib/firebaseClient";
 
 const Profile: React.FC = () => {
-  const [profileData, setProfileData] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      const firebase = getFirebase();
-      if (!firebase) {
-        console.log("Firebase not initialized.");
-        return;
-      }
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userEmail = user.email;
-
-      if (userEmail) {
-        // Fetch user data from Firestore based on email
-        const q = collection(firebase.db, "users");
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            if(doc.data().email === userEmail){
-              setProfileData({id: doc.id, ...doc.data()});
-            }
-          });
-        } else {
-          console.log("No matching documents.");
-          setProfileData(null);
-        }
-      }
-    };
-
-    fetchProfileData();
-  }, []);
-
-  if (!profileData) {
-    return (
-      <div>
-        <h2 className="text-2xl font-semibold mb-4">User Profile</h2>
-        <p className="mb-4">No profile data available.</p>
-      </div>
-    );
-  }
+  const [profileData, setProfileData] = useState<any>({
+    name: 'Demo User',
+    age: 30,
+    height: 175,
+    weight: 70,
+    email: 'demo@example.com',
+  });
 
   return (
     <div>

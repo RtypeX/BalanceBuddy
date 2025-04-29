@@ -9,11 +9,11 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 
 const PersonalizedWorkoutPlan: React.FC = () => {
-  const [fitnessGoals, setFitnessGoals] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState('');
-  const [availableEquipment, setAvailableEquipment] = useState('');
-  const [workoutDuration, setWorkoutDuration] = useState('');
-  const [workoutFrequency, setWorkoutFrequency] = useState('');
+  const [fitnessGoals, setFitnessGoals] = useState('Build muscle');
+  const [experienceLevel, setExperienceLevel] = useState('Intermediate');
+  const [availableEquipment, setAvailableEquipment] = useState('Dumbbells, barbell, bench');
+  const [workoutDuration, setWorkoutDuration] = useState('60');
+  const [workoutFrequency, setWorkoutFrequency] = useState('3');
   const [workoutPlan, setWorkoutPlan] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {

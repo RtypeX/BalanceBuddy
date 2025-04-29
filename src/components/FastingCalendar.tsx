@@ -44,3 +44,4 @@ const FastingCalendar = () => {
 };
 
 export default FastingCalendar;
+
