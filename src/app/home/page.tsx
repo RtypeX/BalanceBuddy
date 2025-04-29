@@ -11,7 +11,7 @@ import {useEffect, useState, useRef} from "react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {ModeToggle} from "@/components/ModeToggle";
-import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
+import {workoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import {ScrollArea} from "@/components/ui/scroll-area";
@@ -54,7 +54,7 @@ export default function Home() {
     setChatHistory(prev => [...prev, { type: 'query', text: query }]);
 
     const input: WorkoutAdviceInput = {query: query};
-    const adviceResult = await getWorkoutAdvice(input);
+    const adviceResult = await workoutAdvice(input);
     setChatHistory(prev => [...prev, { type: 'advice', text: adviceResult.advice }]);
     setQuery('');
   };

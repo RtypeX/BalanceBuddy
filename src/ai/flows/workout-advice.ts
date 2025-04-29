@@ -8,7 +8,7 @@
  * - WorkoutAdviceOutput - The return type for the getWorkoutAdvice function.
  */
 
-import {ai} from '@/ai/ai-instance';
+import {getAi} from '@/ai/ai-instance';
 import {z} from 'genkit';
 
 const WorkoutAdviceInputSchema = z.object({
@@ -27,7 +27,7 @@ export async function getWorkoutAdvice(
   return workoutAdviceFlow(input);
 }
 
-const workoutAdvicePrompt = ai.definePrompt({
+const workoutAdvicePrompt = (ai: any) => ai.definePrompt({
   name: 'workoutAdvicePrompt',
   input: {
     schema: z.object({
@@ -49,7 +49,7 @@ const workoutAdvicePrompt = ai.definePrompt({
   `,
 });
 
-const workoutAdviceFlow = ai.defineFlow<
+const workoutAdviceFlow = (ai: any) => ai.defineFlow<
   typeof WorkoutAdviceInputSchema,
   typeof WorkoutAdviceOutputSchema
 >(
@@ -60,7 +60,8 @@ const workoutAdviceFlow = ai.defineFlow<
   },
   async input => {
     try {
-      const {output} = await workoutAdvicePrompt(input);
+      const prompt = workoutAdvicePrompt(ai);
+      const {output} = await prompt(input);
       if (output && output.advice) {
         return {advice: output.advice};
       } else {
@@ -73,3 +74,9 @@ const workoutAdviceFlow = ai.defineFlow<
     }
   }
 );
+
+export async function workoutAdvice(input: WorkoutAdviceInput): Promise<WorkoutAdviceOutput> {
+  const ai = await getAi();
+  const flow = workoutAdviceFlow(ai);
+  return flow(input);
+}

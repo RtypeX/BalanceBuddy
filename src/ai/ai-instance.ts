@@ -1,8 +1,8 @@
 'use server';
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import {genkit} from 'genkit';
+import {googleAI} from '@genkit-ai/googleai';
 
-export async function createAiInstance() {
+async function createAiInstance() {
   return genkit({
     promptDir: './prompts',
     plugins: [
@@ -13,4 +13,6 @@ export async function createAiInstance() {
   });
 }
 
-export const ai = await createAiInstance();
+export const getAi = async () => {
+  return await createAiInstance();
+};
