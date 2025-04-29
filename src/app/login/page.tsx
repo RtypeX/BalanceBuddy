@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {useState} from 'react';
@@ -46,8 +47,8 @@ const Login: React.FC = () => {
       <Image
             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
             alt="BalanceBuddy Logo"
-            width={100}
-            height={100}
+            width={150}
+            height={150}
             className="mb-8"
           />
       <h1 className="text-3xl font-bold mb-8">Login</h1>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useRouter} from 'next/navigation';
@@ -36,8 +37,8 @@ export default function StartScreen() {
       <Image
             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
             alt="BalanceBuddy Logo"
-            width={100}
-            height={100}
+            width={200}
+            height={200}
             className="mb-8"
           />
       <h1 className="text-4xl font-bold mb-8">Welcome to BalanceBuddy</h1>
@@ -51,4 +52,3 @@ export default function StartScreen() {
     </div>
   );
 }
-

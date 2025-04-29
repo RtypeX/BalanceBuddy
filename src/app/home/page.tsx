@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -65,8 +66,8 @@ export default function Home() {
       <Image
             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
             alt="BalanceBuddy Logo"
-            width={50}
-            height={50}
+            width={75}
+            height={75}
             className="mr-2"
           />
         <h1 className="text-2xl font-semibold text-ios-blue dark:text-ios-blue">BalanceBuddy</h1>
@@ -81,7 +82,7 @@ export default function Home() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="exercises" className="flex-1 flex flex-col">
+      <Tabs defaultValue="balancebot" className="flex-1 flex flex-col">
         <TabsList className="flex justify-around bg-ios-light-gray dark:bg-ios-dark-gray p-2 rounded-full">
           <TabsTrigger value="exercises"
                        className="data-[state=active]:bg-ios-blue data-[state=active]:text-white rounded-full px-4 py-2 font-semibold transition-colors">
@@ -154,4 +155,3 @@ export default function Home() {
     </div>
   );
 }
-
