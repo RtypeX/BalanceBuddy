@@ -41,7 +41,7 @@ const workoutAdvicePrompt = ai.definePrompt({
       advice: z.string().describe('The workout advice based on the query.'),
     }),
   },
-  prompt: `You are a helpful workout assistant.
+  prompt: `You are a helpful workout assistant using gemini ai.
 
   The user will ask a question about working out, and you will provide helpful advice.
 
