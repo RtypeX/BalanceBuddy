@@ -15,6 +15,7 @@ import {Card, CardContent} from "@/components/ui/card";
 import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
+import Link from 'next/link';
 
 export default function Home() {
   const router = useRouter();
@@ -84,7 +85,7 @@ export default function Home() {
             <CardContent className="p-4">
               <h2 className="text-lg font-semibold mb-2">Exercises</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">Browse our extensive exercise library.</p>
-              <Button variant="outline" onClick={() => router.push('/home?tab=exercises')} className="mt-4 w-full">
+              <Button variant="outline" onClick={() => router.push('/exercises')} className="mt-4 w-full">
                 View Exercises
               </Button>
             </CardContent>
@@ -95,7 +96,7 @@ export default function Home() {
             <CardContent className="p-4">
               <h2 className="text-lg font-semibold mb-2">Workout Builder</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">Create your personalized workout routines.</p>
-              <Button variant="outline" onClick={() => router.push('/home?tab=builder')} className="mt-4 w-full">
+              <Button variant="outline" onClick={() => router.push('/workout-builder')} className="mt-4 w-full">
                 Build Workout
               </Button>
             </CardContent>
@@ -106,7 +107,7 @@ export default function Home() {
             <CardContent className="p-4">
               <h2 className="text-lg font-semibold mb-2">Progress Tracker</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">Track your fitness journey and stay motivated.</p>
-              <Button variant="outline" onClick={() => router.push('/home?tab=progress')} className="mt-4 w-full">
+              <Button variant="outline" onClick={() => router.push('/progress-tracker')} className="mt-4 w-full">
                 View Progress
               </Button>
             </CardContent>
@@ -117,7 +118,7 @@ export default function Home() {
             <CardContent className="p-4">
               <h2 className="text-lg font-semibold mb-2">Profile</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">Manage your profile and settings.</p>
-              <Button variant="outline" onClick={() => router.push('/home?tab=profile')} className="mt-4 w-full">
+              <Button variant="outline" onClick={() => router.push('/profile')} className="mt-4 w-full">
                 Edit Profile
               </Button>
             </CardContent>
@@ -127,7 +128,7 @@ export default function Home() {
             <CardContent className="p-4">
               <h2 className="text-lg font-semibold mb-2">BalanceBot</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">BalanceBot is here to help you with workouts.</p>
-              <Button variant="outline" onClick={() => router.push('/home?tab=balancebot')} className="mt-4 w-full">
+              <Button variant="outline" onClick={() => router.push('/balancebot')} className="mt-4 w-full">
                 Start Chat
               </Button>
             </CardContent>
@@ -137,7 +138,9 @@ export default function Home() {
               <CardContent className="p-4">
                 <h2 className="text-lg font-semibold mb-2">Fasting Calendar</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Plan your fasting schedule.</p>
-                <FastingCalendar/>
+                <Button variant="outline" onClick={() => router.push('/fasting-calendar')} className="mt-4 w-full">
+                  View Calendar
+                </Button>
               </CardContent>
             </Card>
         </div>
