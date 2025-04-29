@@ -47,6 +47,7 @@ const workoutAdvicePrompt = ai.definePrompt({
 
   Query: {{query}}
   `,
+  model: 'models/gemini-1.5-flash', // Define the model here
 });
 
 const workoutAdviceFlow = ai.defineFlow<
@@ -57,7 +58,6 @@ const workoutAdviceFlow = ai.defineFlow<
     name: 'workoutAdviceFlow',
     inputSchema: WorkoutAdviceInputSchema,
     outputSchema: WorkoutAdviceOutputSchema,
-    model: 'models/gemini-1.5-flash',
   },
   async input => {
     const {output} = await workoutAdvicePrompt(input);
