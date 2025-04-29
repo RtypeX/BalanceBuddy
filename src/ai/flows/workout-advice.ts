@@ -57,6 +57,7 @@ const workoutAdviceFlow = ai.defineFlow<
     name: 'workoutAdviceFlow',
     inputSchema: WorkoutAdviceInputSchema,
     outputSchema: WorkoutAdviceOutputSchema,
+    model: 'models/gemini-1.5-flash',
   },
   async input => {
     const {output} = await workoutAdvicePrompt(input);
