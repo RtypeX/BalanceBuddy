@@ -47,7 +47,6 @@ const workoutAdvicePrompt = ai.definePrompt({
 
   Query: {{query}}
   `,
-  model: 'models/gemini-1.0-pro', // Define the model here
 });
 
 const workoutAdviceFlow = ai.defineFlow<
@@ -64,3 +63,4 @@ const workoutAdviceFlow = ai.defineFlow<
     return output!;
   }
 );
+
