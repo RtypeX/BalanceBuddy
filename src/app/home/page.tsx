@@ -10,7 +10,7 @@ import {useEffect, useState, useRef} from "react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {ModeToggle} from "@/components/ModeToggle";
-import {getWorkoutAdvice} from "@/ai/flows/workout-advice";
+import {getWorkoutAdvice, WorkoutAdviceInput} from "@/ai/flows/workout-advice";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import Image from 'next/image';
@@ -30,6 +30,28 @@ export default function Home() {
       router.push('/');
     }
   }, [router]);
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setChatHistory(prev => [...prev, { type: 'query', text: query }]);
+
+    const input: WorkoutAdviceInput = { query: query };
+    const adviceResult = await getWorkoutAdvice(input);
+
+    if (adviceResult && adviceResult.advice) {
+      setChatHistory(prev => [...prev, { type: 'advice', text: adviceResult.advice }]);
+    } else {
+      setChatHistory(prev => [...prev, { type: 'advice', text: 'Error generating advice. Please try again.' }]);
+    }
+
+    setQuery('');
+    // Scroll to bottom of chat
+    if (chatHistoryRef.current) {
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-ios-light-background dark:bg-ios-dark-background">
