@@ -53,14 +53,23 @@ const workoutAdviceFlow = ai.defineFlow<
   typeof WorkoutAdviceInputSchema,
   typeof WorkoutAdviceOutputSchema
 >(
-  {
+  {    
     name: 'workoutAdviceFlow',
     inputSchema: WorkoutAdviceInputSchema,
     outputSchema: WorkoutAdviceOutputSchema,
   },
   async input => {
-    const {output} = await workoutAdvicePrompt(input);
-    return output!;
+    try {
+      const {output} = await workoutAdvicePrompt(input);
+      if (output && output.advice) {
+        return {advice: output.advice};
+      } else {
+        console.error('Workout advice flow: No advice received from prompt.');
+        return {advice: 'Sorry, I could not generate workout advice at this time.'};
+      }
+    } catch (error: any) {
+      console.error('Workout advice flow failed:', error);
+      return {advice: 'An error occurred while generating workout advice.'};
+    }
   }
 );
-
