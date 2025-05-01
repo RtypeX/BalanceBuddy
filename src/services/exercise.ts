@@ -1,7 +1,6 @@
 'use client';
 
 import { collection, getDocs, doc, DocumentData } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebaseClient'; // Correct import path
 
 /**
  * Represents an exercise.
@@ -27,7 +26,7 @@ export interface Exercise {
  * @returns A promise resolving to an array of Exercise objects.
  */
 export async function getExercises(): Promise<Exercise[]> {
-  // Demo data - replace with actual Firestore fetch if needed later
+  // Demo data
   const exercises: Exercise[] = [
     {
       name: 'Push-ups',
@@ -60,25 +59,6 @@ export async function getExercises(): Promise<Exercise[]> {
       videoUrl: 'https://example.com/rows.mp4',
     },
   ];
-
-  // If you want to fetch from Firestore, uncomment and adapt this:
-  /*
-  const firebase = getFirebase();
-  if (!firebase || !firebase.db) {
-      console.error("Firestore not initialized");
-      return exercises; // Return demo data if Firestore isn't ready
-  }
-  const { db } = firebase; // Get the firestore instance
-
-  try {
-    const querySnapshot = await getDocs(collection(db, "exercises"));
-    const fetchedExercises: Exercise[] = querySnapshot.docs.map(doc => doc.data() as Exercise);
-    return fetchedExercises.length > 0 ? fetchedExercises : exercises; // Return fetched or demo data
-  } catch (error) {
-    console.error("Error fetching exercises from Firestore:", error);
-    return exercises; // Return demo data on error
-  }
-  */
 
   return exercises; // Return demo data
 }
