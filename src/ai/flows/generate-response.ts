@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A generic chatbot response generator.
+ * @fileOverview A generic chatbot response generator using Genkit.
  *
  * - generateResponse - A function that handles generating a response to a message.
  * - GenerateResponseInput - The input type for the generateResponse function.
@@ -25,8 +25,6 @@ export type GenerateResponseOutput = z.infer<typeof GenerateResponseOutputSchema
 
 // Define the main function
 export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
-  // Call the Genkit flow. If it throws, the error will propagate.
-  // Client-side code should handle potential errors from this async function.
   return generateResponseFlow(input);
 }
 
@@ -34,12 +32,15 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
 const prompt = ai.definePrompt({
   name: 'generateResponsePrompt',
   input: {
-    schema: GenerateResponseInputSchema, // Use the schema directly
+    schema: z.object({ // Use the existing schema object
+      message: z.string().describe('The message to send to the bot.'),
+    }),
   },
   output: {
-    schema: GenerateResponseOutputSchema, // Use the schema directly
+    schema: z.object({ // Use the existing schema object
+      response: z.string().describe('The response from the bot.'),
+    }),
   },
-  // Updated prompt for better context and fitness focus
   prompt: `You are a helpful fitness assistant chatbot named BalanceBot. Respond to the following message, focusing on fitness, health, and wellness topics. If the message is off-topic, gently guide the conversation back to fitness or politely decline to answer.
 
 User Message: {{{message}}}
@@ -58,24 +59,19 @@ const generateResponseFlow = ai.defineFlow<
   },
   async input => {
     try {
-      // Call the prompt function with the input
-      const { output } = await prompt(input);
-
-      // Ensure output is not null or undefined before returning
-      if (!output) {
-        console.error('Error in generateResponseFlow: Received null or undefined output from prompt.');
-        // Return a structured error response matching the output schema
-        return { response: 'Sorry, I received an unexpected empty response. Please try again.' };
-      }
-      return output;
-
+      const {output} = await prompt(input);
+       if (!output) {
+         console.error('Error in generateResponseFlow: Received null or undefined output from prompt.');
+         // Return a structured error response matching the output schema
+         return { response: 'Sorry, I received an unexpected empty response. Please try again.' };
+       }
+       return output;
     } catch (e: unknown) {
       // Log the detailed error on the server for debugging
-      console.error('Error in generateResponseFlow: ', e instanceof Error ? e.message : String(e));
-
-      // Return a user-friendly error message within the expected output schema
-      // Avoid throwing here to allow the client to receive a structured error message
-      return { response: 'Sorry, I encountered an error trying to generate a response. Please check the server logs for details or try again later.' };
+       console.error('Error in generateResponseFlow: ', e instanceof Error ? e.message : String(e));
+       // Return a user-friendly error message within the expected output schema
+       // Avoid throwing here to allow the client to receive a structured error message
+       return { response: 'Sorry, I encountered an error trying to generate a response. Please check the server logs for details or try again later.' };
     }
   }
 );
