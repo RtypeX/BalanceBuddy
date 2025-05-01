@@ -6,7 +6,7 @@ import {Card, CardContent} from "@/components/ui/card";
 import {Textarea} from "@/components/ui/textarea";
 import {useEffect, useRef, useState} from "react";
 import {useRouter} from "next/navigation";
-import { generateResponse, GenerateResponseInput } from "@/ai/flows/generate-response"; // Import the new flow
+import { generateResponse, GenerateResponseInput } from "@/ai/flows/generate-response"; // Import the flow
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -35,22 +35,27 @@ export default function BalanceBotPage() {
 
     try {
       const input: GenerateResponseInput = { message: userMessage };
-      const result = await generateResponse(input); // Call the Genkit flow
+      // Call the Genkit flow function directly
+      const result = await generateResponse(input);
 
+      // The flow now returns the error message within the 'response' field if something goes wrong server-side
       if (result.response) {
         setChatHistory(prev => [...prev, {type: 'advice', text: result.response}]);
       } else {
-         // This case might happen if the flow returns an empty response object due to an error handled within the flow
+         // This case should ideally not happen if the flow returns the error in the response field
+        console.warn("Received unexpected empty result from generateResponse");
         setChatHistory(prev => [...prev, {
           type: 'advice',
-          text: 'Sorry, I couldn\'t generate a response right now.',
+          text: 'Sorry, I couldn\'t get a response right now.',
         }]);
       }
     } catch (error: any) {
-      console.error("Failed to fetch workout advice:", error);
+      // Catch errors that might happen during the network request itself or if the flow *throws* unexpectedly
+      console.error("Error calling generateResponse:", error);
       setChatHistory(prev => [...prev, {
         type: 'advice',
-        text: 'An error occurred while generating advice. Please try again later.',
+        // Display a generic error for unexpected client-side or network issues
+        text: 'An unexpected error occurred while sending your message. Please check your connection or try again later.',
       }]);
     } finally {
       setIsLoading(false); // Reset loading state
@@ -114,9 +119,20 @@ export default function BalanceBotPage() {
                 className="flex-grow rounded-xl resize-none" // Prevent resize
                 rows={1} // Start with 1 row, might need dynamic resizing logic later
                 disabled={isLoading} // Disable while loading
+                onKeyDown={(e) => { // Submit on Enter, new line on Shift+Enter
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e as unknown as React.FormEvent); // Type assertion might be needed
+                    }
+                }}
               />
               <Button type="submit" className="rounded-xl" disabled={isLoading || !query.trim()}>
-                {isLoading ? 'Sending...' : 'Send'}
+                {isLoading ? (
+                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                   </svg>
+                ) : 'Send'}
               </Button>
             </div>
           </form>
