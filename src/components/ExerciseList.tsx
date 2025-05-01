@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { getExercises, Exercise } from '../services/exercise';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Removed CardFooter import
 import { Button } from "@/components/ui/button";
-// Removed Image import
 import { BookOpen } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -91,16 +90,15 @@ const ExerciseList: React.FC = () => {
                 </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 flex-grow"> {/* Adjusted padding */}
-                {/* Image component removed */}
-                <p className="text-xs text-muted-foreground">Muscle Group: {exercise.muscleGroup}</p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0 flex justify-center"> {/* Centered the footer content */}
-                {exercise.tutorial ? (
+                <p className="text-xs text-muted-foreground mb-2">Muscle Group: {exercise.muscleGroup}</p>
+                  {/* Tutorial Dialog Trigger - Now a simple text button */}
+                  {exercise.tutorial ? (
                     <Dialog>
                        <DialogTrigger asChild>
-                           <Button variant="outline" size="sm" className="w-full max-w-xs"> {/* Centered button */}
-                               <BookOpen className="mr-2 h-4 w-4 inline" /> View Tutorial
-                           </Button>
+                           {/* Changed Button to a simple text link style */}
+                           <button className="text-sm text-primary hover:underline inline-flex items-center">
+                               <BookOpen className="mr-1 h-4 w-4 inline" /> View Tutorial
+                           </button>
                        </DialogTrigger>
                        <DialogContent className="sm:max-w-[425px]">
                            <DialogHeader>
@@ -125,7 +123,8 @@ const ExerciseList: React.FC = () => {
                 ) : (
                     <p className="text-xs text-muted-foreground">No tutorial available</p>
                 )}
-                </CardFooter>
+                </CardContent>
+                {/* CardFooter has been removed */}
             </Card>
             ))}
         </div>
@@ -135,5 +134,3 @@ const ExerciseList: React.FC = () => {
 };
 
 export default ExerciseList;
-
-    
