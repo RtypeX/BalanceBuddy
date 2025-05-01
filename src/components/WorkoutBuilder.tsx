@@ -23,11 +23,14 @@ interface SavedRoutine {
   exercises: RoutineExercise[];
 }
 
+const CUSTOM_EXERCISE_VALUE = "__CUSTOM__";
+
 const WorkoutBuilder: React.FC = () => {
   const { toast } = useToast();
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [currentRoutine, setCurrentRoutine] = useState<RoutineExercise[]>([]);
   const [selectedExerciseName, setSelectedExerciseName] = useState<string>('');
+  const [customExerciseName, setCustomExerciseName] = useState<string>('');
   const [sets, setSets] = useState<string>('3');
   const [reps, setReps] = useState<string>('10');
   const [routineName, setRoutineName] = useState<string>('');
@@ -62,36 +65,62 @@ const WorkoutBuilder: React.FC = () => {
   }, [savedRoutines]);
 
   const handleAddExercise = () => {
-    if (!selectedExerciseName) {
-      toast({ variant: "destructive", title: "Error", description: "Please select an exercise." });
-      return;
-    }
-    const exerciseToAdd = allExercises.find(ex => ex.name === selectedExerciseName);
     const setsNum = parseInt(sets, 10);
 
-    if (!exerciseToAdd || isNaN(setsNum) || setsNum <= 0 || !reps.trim()) {
-      toast({ variant: "destructive", title: "Invalid Input", description: "Please ensure sets, reps, and exercise selection are valid." });
+    if (isNaN(setsNum) || setsNum <= 0 || !reps.trim()) {
+      toast({ variant: "destructive", title: "Invalid Input", description: "Please ensure sets and reps are valid." });
       return;
     }
 
-    // Check if exercise is already in the routine
-    if (currentRoutine.some(ex => ex.name === exerciseToAdd.name)) {
-        toast({ variant: "destructive", title: "Duplicate Exercise", description: `${exerciseToAdd.name} is already in the routine.` });
+    let exerciseToAdd: Exercise | null = null;
+    let finalExerciseName = '';
+
+    if (selectedExerciseName === CUSTOM_EXERCISE_VALUE) {
+      if (!customExerciseName.trim()) {
+        toast({ variant: "destructive", title: "Invalid Input", description: "Please enter a name for the custom exercise." });
+        return;
+      }
+      finalExerciseName = customExerciseName.trim();
+      exerciseToAdd = {
+        name: finalExerciseName,
+        description: 'Custom exercise', // Default description
+        muscleGroup: 'Unknown', // Default muscle group
+      };
+    } else {
+      if (!selectedExerciseName) {
+        toast({ variant: "destructive", title: "Error", description: "Please select an exercise." });
+        return;
+      }
+      exerciseToAdd = allExercises.find(ex => ex.name === selectedExerciseName) || null;
+      if (exerciseToAdd) {
+        finalExerciseName = exerciseToAdd.name;
+      }
+    }
+
+    if (!exerciseToAdd) {
+      toast({ variant: "destructive", title: "Error", description: "Could not find or create the exercise." });
+      return;
+    }
+
+    // Check if exercise (by name) is already in the routine
+    if (currentRoutine.some(ex => ex.name.toLowerCase() === finalExerciseName.toLowerCase())) {
+        toast({ variant: "destructive", title: "Duplicate Exercise", description: `${finalExerciseName} is already in the routine.` });
         return;
     }
 
 
-    setCurrentRoutine(prev => [...prev, { ...exerciseToAdd, sets: setsNum, reps: reps }]);
+    setCurrentRoutine(prev => [...prev, { ...exerciseToAdd!, sets: setsNum, reps: reps }]);
     // Reset inputs for next addition
     setSets('3');
     setReps('10');
+    setCustomExerciseName(''); // Reset custom input
     if (allExercises.length > 0) {
-      setSelectedExerciseName(allExercises[0].name);
+      setSelectedExerciseName(allExercises[0].name); // Reset select to default
     } else {
        setSelectedExerciseName('');
     }
 
-    toast({ title: "Exercise Added", description: `${exerciseToAdd.name} added to the routine.` });
+    toast({ title: "Exercise Added", description: `${finalExerciseName} added to the routine.` });
   };
 
   const handleRemoveExercise = (index: number) => {
@@ -180,7 +209,7 @@ const WorkoutBuilder: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Add Exercise</CardTitle>
-          <CardDescription>Select an exercise and specify sets/reps.</CardDescription>
+          <CardDescription>Select an exercise or add a custom one, then specify sets/reps.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -197,9 +226,24 @@ const WorkoutBuilder: React.FC = () => {
                 ) : (
                   <SelectItem value="loading" disabled>Loading exercises...</SelectItem>
                 )}
+                 <SelectItem value={CUSTOM_EXERCISE_VALUE}>-- Add Custom Exercise --</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {selectedExerciseName === CUSTOM_EXERCISE_VALUE && (
+             <div className="space-y-2">
+                <Label htmlFor="customExerciseName">Custom Exercise Name</Label>
+                <Input
+                  id="customExerciseName"
+                  type="text"
+                  value={customExerciseName}
+                  onChange={(e) => setCustomExerciseName(e.target.value)}
+                  placeholder="Enter custom exercise name"
+                />
+             </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="sets">Sets</Label>
