@@ -17,6 +17,4 @@ export const ai = genkit({
       apiKey: process.env.GOOGLE_GENAI_API_KEY, // Read from environment variable
     }),
   ],
-  logLevel: 'debug', // Optional: Set log level for more details during development
-  enableTracingAndMetrics: true, // Optional: Enable tracing
 });
