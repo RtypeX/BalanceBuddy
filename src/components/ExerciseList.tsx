@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getExercises, Exercise } from '../services/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from 'next/image';
-import { Video } from 'lucide-react'; // Import Video icon
+import { BookOpen } from 'lucide-react'; // Changed icon from Video to BookOpen
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select
+import { Label } from "@/components/ui/label"; // Added Label
 
 const ExerciseList: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('All'); // State for filter
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -26,6 +29,20 @@ const ExerciseList: React.FC = () => {
     fetchExercises();
   }, []);
 
+  // Get unique muscle groups for the filter dropdown
+  const muscleGroups = useMemo(() => {
+    const groups = new Set(exercises.map(ex => ex.muscleGroup));
+    return ['All', ...Array.from(groups)];
+  }, [exercises]);
+
+  // Filter exercises based on the selected muscle group
+  const filteredExercises = useMemo(() => {
+    if (selectedMuscleGroup === 'All') {
+      return exercises;
+    }
+    return exercises.filter(ex => ex.muscleGroup === selectedMuscleGroup);
+  }, [exercises, selectedMuscleGroup]);
+
   if (isLoading) {
     // Optional: Add a skeleton loader here
     return <p>Loading exercises...</p>;
@@ -33,46 +50,68 @@ const ExerciseList: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Exercise Library</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Increased gap */}
-        {exercises.map((exercise, index) => (
-          <Card key={index} className="overflow-hidden flex flex-col shadow-lg rounded-lg transition-transform hover:scale-105"> {/* Added shadow, rounded, transition */}
-            <CardHeader className="p-4 pb-2"> {/* Adjusted padding */}
-              <CardTitle>{exercise.name}</CardTitle>
-              <CardDescription className="text-sm">
-                {exercise.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 flex-grow"> {/* Adjusted padding */}
-              {exercise.imageUrl && (
-                <div className="relative w-full h-48 mb-4 rounded-md overflow-hidden"> {/* Fixed height container */}
-                  <Image
-                    src={exercise.imageUrl}
-                    alt={exercise.name}
-                    layout="fill" // Use fill layout
-                    objectFit="cover" // Cover the container
-                    data-ai-hint={exercise.imageHint || exercise.name.toLowerCase()} // Add AI hint
-                    className="transition-opacity duration-300 ease-in-out" // Optional: Add transition
-                    // Optional: Add placeholder and blurDataURL for better loading experience
-                    // placeholder="blur"
-                    // blurDataURL="data:image/png;base64,..." // Generate a low-res placeholder
-                  />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Muscle Group: {exercise.muscleGroup}</p>
-            </CardContent>
-            <CardFooter className="p-4 pt-0"> {/* Adjusted padding */}
-              {exercise.videoUrl && (
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">
-                    <Video className="mr-2 h-4 w-4" /> Watch Demo
-                  </a>
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+      <div className="flex justify-between items-center mb-6"> {/* Increased margin-bottom */}
+        <h2 className="text-2xl font-semibold">Exercise Library</h2>
+        <div className="flex items-center space-x-2">
+            <Label htmlFor="muscleGroupFilter" className="text-sm font-medium">Filter by Muscle:</Label>
+            <Select value={selectedMuscleGroup} onValueChange={setSelectedMuscleGroup}>
+                <SelectTrigger id="muscleGroupFilter" className="w-[180px]">
+                    <SelectValue placeholder="Select Muscle Group" />
+                </SelectTrigger>
+                <SelectContent>
+                    {muscleGroups.map(group => (
+                        <SelectItem key={group} value={group}>{group}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
       </div>
+
+      {filteredExercises.length === 0 && !isLoading ? (
+          <p className="text-center text-muted-foreground mt-8">No exercises found for this muscle group.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Increased gap */}
+            {filteredExercises.map((exercise, index) => (
+            <Card key={index} className="overflow-hidden flex flex-col shadow-lg rounded-lg transition-transform hover:scale-105"> {/* Added shadow, rounded, transition */}
+                <CardHeader className="p-4 pb-2"> {/* Adjusted padding */}
+                <CardTitle>{exercise.name}</CardTitle>
+                <CardDescription className="text-sm">
+                    {exercise.description}
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 flex-grow"> {/* Adjusted padding */}
+                {exercise.imageUrl && (
+                    <div className="relative w-full h-48 mb-4 rounded-md overflow-hidden"> {/* Fixed height container */}
+                    <Image
+                        src={exercise.imageUrl}
+                        alt={exercise.name}
+                        fill // Use fill layout
+                        style={{ objectFit: 'cover' }} // Cover the container
+                        data-ai-hint={exercise.imageHint || exercise.name.toLowerCase()} // Add AI hint
+                        className="transition-opacity duration-300 ease-in-out" // Optional: Add transition
+                        // Optional: Add placeholder and blurDataURL for better loading experience
+                        // placeholder="blur"
+                        // blurDataURL="data:image/png;base64,..." // Generate a low-res placeholder
+                    />
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground">Muscle Group: {exercise.muscleGroup}</p>
+                </CardContent>
+                <CardFooter className="p-4 pt-0 flex justify-center"> {/* Adjusted padding and centered button */}
+                {exercise.videoUrl ? ( // Using videoUrl as a proxy for having a tutorial link
+                    <Button asChild variant="outline" size="sm" className="w-full max-w-xs"> {/* Limit button width */}
+                    <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">
+                        <BookOpen className="mr-2 h-4 w-4" /> View Tutorial
+                    </a>
+                    </Button>
+                ) : (
+                    <p className="text-xs text-muted-foreground">No tutorial available</p>
+                )}
+                </CardFooter>
+            </Card>
+            ))}
+        </div>
+      )}
     </div>
   );
 };
