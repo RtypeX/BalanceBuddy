@@ -1,77 +1,120 @@
 'use server';
 /**
- * @fileOverview A generic chatbot response generator using Genkit.
+ * @fileOverview Handles generating chatbot responses using the Gemini API.
  *
- * - generateResponse - A function that handles generating a response to a message.
- * - GenerateResponseInput - The input type for the generateResponse function.
- * - GenerateResponseOutput - The return type for the generateResponse function.
+ * - generateResponse - Takes chat history and generates the next assistant response.
+ * - ChatMessage - Interface for chat messages.
  */
 
-// Import necessary modules
-import {ai} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import { getGeminiModel } from '@/ai/ai-instance';
+import type { Content, Part } from "@google/generative-ai";
 
-// Define the input schema
-const GenerateResponseInputSchema = z.object({
-  message: z.string().describe('The message to send to the bot.'),
-});
-export type GenerateResponseInput = z.infer<typeof GenerateResponseInputSchema>;
-
-// Define the output schema
-const GenerateResponseOutputSchema = z.object({
-  response: z.string().describe('The response from the bot.'),
-});
-export type GenerateResponseOutput = z.infer<typeof GenerateResponseOutputSchema>;
-
-// Define the main function
-export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
-  return generateResponseFlow(input);
+// Define the structure for chat messages (consistent with UI)
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant'; // Use 'assistant' for UI consistency
+  content: string;
+  timestamp: number;
 }
 
-// Define the prompt
-const prompt = ai.definePrompt({
-  name: 'generateResponsePrompt',
-  input: {
-    schema: z.object({ // Use the existing schema object
-      message: z.string().describe('The message to send to the bot.'),
-    }),
-  },
-  output: {
-    schema: z.object({ // Use the existing schema object
-      response: z.string().describe('The response from the bot.'),
-    }),
-  },
-  prompt: `You are a helpful fitness assistant chatbot named BalanceBot. Respond to the following message, focusing on fitness, health, and wellness topics. If the message is off-topic, gently guide the conversation back to fitness or politely decline to answer.
+// Define the input type for the main function
+export interface GenerateResponseInput {
+  history: ChatMessage[]; // Pass the entire history
+}
 
-User Message: {{{message}}}
-Your Response:`,
-});
+// Define the output type
+export interface GenerateResponseOutput {
+  response: string; // The generated text response
+}
 
-// Define the flow
-const generateResponseFlow = ai.defineFlow<
-  typeof GenerateResponseInputSchema,
-  typeof GenerateResponseOutputSchema
->(
-  {
-    name: 'generateResponseFlow',
-    inputSchema: GenerateResponseInputSchema,
-    outputSchema: GenerateResponseOutputSchema,
-  },
-  async input => {
-    try {
-      const {output} = await prompt(input);
-       if (!output) {
-         console.error('Error in generateResponseFlow: Received null or undefined output from prompt.');
-         // Return a structured error response matching the output schema
-         return { response: 'Sorry, I received an unexpected empty response. Please try again.' };
-       }
-       return output;
-    } catch (e: unknown) {
-      // Log the detailed error on the server for debugging
-       console.error('Error in generateResponseFlow: ', e instanceof Error ? e.message : String(e));
-       // Return a user-friendly error message within the expected output schema
-       // Avoid throwing here to allow the client to receive a structured error message
-       return { response: 'Sorry, I encountered an error trying to generate a response. Please check the server logs for details or try again later.' };
+/**
+ * Maps our ChatMessage role to the Gemini API's role ('user' or 'model').
+ */
+function mapRoleToGemini(role: ChatMessage['role']): 'user' | 'model' {
+  return role === 'assistant' ? 'model' : 'user';
+}
+
+/**
+ * Formats the chat history for the Gemini API.
+ * @param history - The array of ChatMessage objects.
+ * @returns The formatted history for the Gemini API.
+ */
+function formatChatHistoryForGemini(history: ChatMessage[]): Content[] {
+  // Filter out potential empty messages and map roles/content
+  return history
+    .filter(msg => msg.content.trim() !== '')
+    .map(msg => ({
+      role: mapRoleToGemini(msg.role),
+      parts: [{ text: msg.content }],
+    }));
+}
+
+/**
+ * Generates a response from the Gemini model based on the chat history.
+ * @param input - An object containing the chat history.
+ * @returns A promise resolving to the generated response text.
+ */
+export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
+  const { history } = input;
+
+  // Ensure history is not empty
+  if (!history || history.length === 0) {
+    console.error("Error generating response: Chat history is empty.");
+    return { response: "It looks like there's no conversation yet. Send me a message!" };
+  }
+
+  const model = getGeminiModel();
+  const formattedHistory = formatChatHistoryForGemini(history);
+
+  // Extract the latest user message (last item in formattedHistory)
+  // The history should already include the latest user message before calling this function.
+  const latestMessageContent = formattedHistory.pop(); // Remove last message to send separately
+
+  if (!latestMessageContent || latestMessageContent.role !== 'user') {
+    console.error("Error generating response: Last message in history is not from the user or history is malformed.");
+    // Attempt to recover or return error
+    if(history.length > 0 && history[history.length-1].role === 'user'){
+        // If the formatting failed but the raw history looks okay, try sending just the last message
+         latestMessageContent = { role: 'user', parts: [{ text: history[history.length-1].content }] };
+         formattedHistory.pop(); // Remove the possibly incorrect last entry from formatted history too
+         console.warn("Attempting recovery by sending only the last user message.");
+    } else {
+        return { response: "I seem to have lost track of the conversation. Could you please repeat your last message?" };
     }
   }
-);
+
+
+  try {
+    // Start chat with the history *before* the last user message
+    const chat = model.startChat({
+      history: formattedHistory,
+      // generationConfig: { // Optional: Adjust generation parameters if needed
+      //   maxOutputTokens: 200,
+      // }
+    });
+
+    // Send the latest user message
+    const result = await chat.sendMessage(latestMessageContent.parts);
+    const response = result.response;
+
+    if (!response?.text()) {
+      console.warn("Received empty response from Gemini:", response);
+      // Check for safety ratings or other reasons for empty response
+      if (response?.promptFeedback?.blockReason) {
+         console.error("Response blocked due to:", response.promptFeedback.blockReason);
+         return { response: "I can't respond to that due to safety guidelines. Let's talk about something else fitness-related!" };
+      }
+      return { response: "Sorry, I couldn't generate a response for that. Could you try rephrasing?" };
+    }
+
+    return { response: response.text() };
+
+  } catch (error: any) {
+    console.error("Error calling Gemini API:", error);
+    // Provide more specific feedback if possible
+    if (error.message.includes('API key not valid')) {
+        return { response: "There seems to be an issue with the API configuration. Please contact support." };
+    }
+    return { response: "Sorry, I encountered an error trying to generate a response. Please try again later." };
+  }
+}
