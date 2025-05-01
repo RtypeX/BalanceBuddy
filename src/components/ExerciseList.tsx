@@ -4,10 +4,21 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { getExercises, Exercise } from '../services/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Image from 'next/image';
-import { BookOpen } from 'lucide-react'; // Changed icon from Video to BookOpen
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select
-import { Label } from "@/components/ui/label"; // Added Label
+// Removed Image import
+import { BookOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose // Import DialogClose
+} from "@/components/ui/dialog";
+import { ScrollArea } from './ui/scroll-area'; // Import ScrollArea
+
 
 const ExerciseList: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -32,7 +43,7 @@ const ExerciseList: React.FC = () => {
   // Get unique muscle groups for the filter dropdown
   const muscleGroups = useMemo(() => {
     const groups = new Set(exercises.map(ex => ex.muscleGroup));
-    return ['All', ...Array.from(groups)];
+    return ['All', ...Array.from(groups).sort()]; // Sort muscle groups alphabetically
   }, [exercises]);
 
   // Filter exercises based on the selected muscle group
@@ -80,32 +91,37 @@ const ExerciseList: React.FC = () => {
                 </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 flex-grow"> {/* Adjusted padding */}
-                {exercise.imageUrl && (
-                    <div className="relative w-full h-48 mb-4 rounded-md overflow-hidden"> {/* Fixed height container */}
-                    <Image
-                        src={exercise.imageUrl}
-                        alt={exercise.name}
-                        fill // Use fill layout
-                        style={{ objectFit: 'cover' }} // Cover the container
-                        data-ai-hint={exercise.imageHint || exercise.name.toLowerCase()} // Add AI hint
-                        className="transition-opacity duration-300 ease-in-out" // Optional: Add transition
-                        // Optional: Add placeholder and blurDataURL for better loading experience
-                        // placeholder="blur"
-                        // blurDataURL="data:image/png;base64,..." // Generate a low-res placeholder
-                    />
-                    </div>
-                )}
+                {/* Image component removed */}
                 <p className="text-xs text-muted-foreground">Muscle Group: {exercise.muscleGroup}</p>
                 </CardContent>
-                <CardFooter className="p-4 pt-0 flex justify-center"> {/* Adjusted padding and centered button */}
-                {exercise.videoUrl ? ( // Using videoUrl as a proxy for having a tutorial link
-                    <Button asChild variant="outline" size="sm" className="w-full max-w-xs">
-                      <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">
-                         <span> {/* Wrap content in a span */}
-                           <BookOpen className="mr-2 h-4 w-4 inline" /> View Tutorial {/* Use inline for icon */}
-                         </span>
-                      </a>
-                    </Button>
+                <CardFooter className="p-4 pt-0 flex justify-center"> {/* Centered the footer content */}
+                {exercise.tutorial ? (
+                    <Dialog>
+                       <DialogTrigger asChild>
+                           <Button variant="outline" size="sm" className="w-full max-w-xs"> {/* Centered button */}
+                               <BookOpen className="mr-2 h-4 w-4 inline" /> View Tutorial
+                           </Button>
+                       </DialogTrigger>
+                       <DialogContent className="sm:max-w-[425px]">
+                           <DialogHeader>
+                               <DialogTitle>{exercise.name} Tutorial</DialogTitle>
+                               <DialogDescription>
+                                   Follow these steps to perform the exercise correctly.
+                               </DialogDescription>
+                           </DialogHeader>
+                            {/* Make tutorial content scrollable */}
+                           <ScrollArea className="max-h-[60vh] w-full rounded-md border p-4 my-4">
+                                <pre className="whitespace-pre-wrap text-sm font-sans">
+                                    {exercise.tutorial}
+                                </pre>
+                           </ScrollArea>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">
+                                Close
+                                </Button>
+                           </DialogClose>
+                       </DialogContent>
+                    </Dialog>
                 ) : (
                     <p className="text-xs text-muted-foreground">No tutorial available</p>
                 )}
@@ -119,3 +135,5 @@ const ExerciseList: React.FC = () => {
 };
 
 export default ExerciseList;
+
+    
