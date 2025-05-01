@@ -99,10 +99,12 @@ const ExerciseList: React.FC = () => {
                 </CardContent>
                 <CardFooter className="p-4 pt-0 flex justify-center"> {/* Adjusted padding and centered button */}
                 {exercise.videoUrl ? ( // Using videoUrl as a proxy for having a tutorial link
-                    <Button asChild variant="outline" size="sm" className="w-full max-w-xs"> {/* Limit button width */}
-                    <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">
-                        <BookOpen className="mr-2 h-4 w-4" /> View Tutorial
-                    </a>
+                    <Button asChild variant="outline" size="sm" className="w-full max-w-xs">
+                      <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">
+                         <span> {/* Wrap content in a span */}
+                           <BookOpen className="mr-2 h-4 w-4 inline" /> View Tutorial {/* Use inline for icon */}
+                         </span>
+                      </a>
                     </Button>
                 ) : (
                     <p className="text-xs text-muted-foreground">No tutorial available</p>
