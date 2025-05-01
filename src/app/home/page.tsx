@@ -15,6 +15,7 @@ import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
 import BalanceBotPage from "@/app/balancebot/page";
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
+import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight } from 'lucide-react'; // Import new icon
 
 export default function Home() {
   const router = useRouter();
@@ -33,6 +34,9 @@ export default function Home() {
     localStorage.removeItem('fastingStartTime'); // Clear active fast start time
     localStorage.removeItem('fastingGoalHours'); // Clear fasting goal
     localStorage.removeItem('workoutLogs'); // Clear workout logs
+    localStorage.removeItem('weightLog'); // Clear weight log
+    localStorage.removeItem('weightGoal'); // Clear weight goal
+    localStorage.removeItem('startWeight'); // Clear start weight
     router.push('/'); // Redirect to login/start screen
   };
 
@@ -68,7 +72,7 @@ export default function Home() {
           {/* Exercise List Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg"> {/* Added hover effect */}
             <CardContent className="p-4 flex flex-col items-center text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+              <Dumbbell className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
               <h2 className="text-lg font-semibold mb-1">Exercises</h2>
               <p className="text-sm text-muted-foreground mb-3">Browse our extensive exercise library.</p>
               <Button variant="outline" onClick={() => router.push('/exercises')} className="w-full">
@@ -80,7 +84,7 @@ export default function Home() {
           {/* Workout Builder Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+               <FileText className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
               <h2 className="text-lg font-semibold mb-1">Workout Builder</h2>
               <p className="text-sm text-muted-foreground mb-3">Create personalized workout routines.</p>
               <Button variant="outline" onClick={() => router.push('/workout-builder')} className="w-full">
@@ -92,7 +96,7 @@ export default function Home() {
           {/* Progress Tracker Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+             <BarChart3 className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
               <h2 className="text-lg font-semibold mb-1">Progress Tracker</h2>
               <p className="text-sm text-muted-foreground mb-3">Track your fitness journey and stay motivated.</p>
               <Button variant="outline" onClick={() => router.push('/progress-tracker')} className="w-full">
@@ -104,7 +108,7 @@ export default function Home() {
           {/* Profile Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+               <User className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
               <h2 className="text-lg font-semibold mb-1">Profile</h2>
               <p className="text-sm text-muted-foreground mb-3">Manage your profile and settings.</p>
               <Button variant="outline" onClick={() => router.push('/profile')} className="w-full">
@@ -116,7 +120,7 @@ export default function Home() {
           {/* BalanceBot Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+               <Bot className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
               <h2 className="text-lg font-semibold mb-1">BalanceBot</h2>
               <p className="text-sm text-muted-foreground mb-3">Ask BalanceBot for workout advice.</p>
               <Button variant="outline" onClick={() => router.push('/balancebot')} className="w-full">
@@ -128,11 +132,23 @@ export default function Home() {
           {/* Fasting Calendar Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
               <CardContent className="p-4 flex flex-col items-center text-center">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+               <Calendar className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
                 <h2 className="text-lg font-semibold mb-1">Fasting Tracker</h2>
                 <p className="text-sm text-muted-foreground mb-3">Plan and track your fasting schedule.</p>
                 <Button variant="outline" onClick={() => router.push('/fasting-calendar')} className="w-full">
                   View Calendar
+                </Button>
+              </CardContent>
+            </Card>
+
+           {/* Weight Tracker Card */}
+          <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
+              <CardContent className="p-4 flex flex-col items-center text-center">
+               <Weight className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
+                <h2 className="text-lg font-semibold mb-1">Weight Tracker</h2>
+                <p className="text-sm text-muted-foreground mb-3">Log your weight and track progress.</p>
+                <Button variant="outline" onClick={() => router.push('/weight-tracker')} className="w-full">
+                  Track Weight
                 </Button>
               </CardContent>
             </Card>
