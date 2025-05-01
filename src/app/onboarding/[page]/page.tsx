@@ -7,10 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, useSearchParams} from 'next/navigation';
 import React, { useState, type FC, useEffect } from 'react';
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
-import { getFirebase } from "@/lib/firebaseClient";
 
 interface OnboardingPageProps {
   params: {
@@ -54,7 +51,6 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const pageNumber = parseInt(page);
   const currentStep = OnboardingSteps[pageNumber - 1];
   const { toast } = useToast();
-  const firebase = getFirebase();
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -105,55 +101,24 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   };
 
   const completeSignUp = async (): Promise<void> => {
-    try {
-      // Get Auth and Firestore instances
+    // Store user information in localStorage
+    localStorage.setItem('user', JSON.stringify({ id: "demo", email: formData.email }));
 
-      const auth = getAuth();
-      const db = getFirestore();
+    // Store profile data in localStorage
+    localStorage.setItem('profileData', JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      age: parseInt(formData.age),
+      height: parseInt(formData.height),
+      weight: parseInt(formData.weight),
+      fitnessGoal: 'Lose Weight', // Default value
+    }));
 
-
-      // Create user account
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
-
-      if (!user) throw new Error("User not found after creation");
-
-      // Create user document in Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, {
-        name: formData.name,
-        email: formData.email,
-        age: parseInt(formData.age),
-        height: parseInt(formData.height),
-        weight: parseInt(formData.weight),
-      });
-
-      // Store user information in localStorage
-      localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
-
-      toast({id: "user-created",
-        title: 'Signup successful',
-        description: 'You are now signed up and your profile has been created.',
-      });
-      router.push('/home');
-    } catch (error: any) {
-      let errorMessage = "An unknown error occurred.";
-        if (error.code) {
-            switch (error.code) {
-                case "auth/email-already-in-use":
-                    errorMessage = "The email address is already in use by another account.";
-                    break;
-                default:
-                    errorMessage = error.message
-            }
-        }
-      toast({
-        id: "user-creation-failed",
-        variant: 'destructive',
-        title: 'Sign up failed',
-        description: errorMessage,
-      });
-    }
+    toast({id: "user-created",
+      title: 'Signup successful',
+      description: 'You are now signed up and your profile has been created.',
+    });
+    router.push('/home');
   };
 
 
