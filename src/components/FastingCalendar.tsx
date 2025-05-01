@@ -215,6 +215,24 @@ const FastingCalendar = () => {
         </Card>
 
        <Card>
+          <CardHeader>
+             <CardTitle>Calendar View</CardTitle>
+             <CardDescription>Select dates to view your fasting history (Highlights planned).</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                // TODO: Implement highlighting of days with logged fasts
+                // modifiers={{ fasted: fastingLog.map(log => new Date(log.startTime)) }}
+                // modifiersClassNames={{ fasted: 'bg-accent text-accent-foreground rounded-full' }}
+                initialFocus
+              />
+          </CardContent>
+       </Card>
+
+       <Card>
             <CardHeader>
                 <CardTitle>Fasting Log</CardTitle>
                 <CardDescription>Your completed fasting sessions.</CardDescription>
@@ -247,30 +265,8 @@ const FastingCalendar = () => {
                 </ScrollArea>
             </CardContent>
        </Card>
-
-
-       <Card>
-          <CardHeader>
-             <CardTitle>Calendar View</CardTitle>
-             <CardDescription>Select dates to view your fasting history (Highlights planned).</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                // TODO: Implement highlighting of days with logged fasts
-                // modifiers={{ fasted: fastingLog.map(log => new Date(log.startTime)) }}
-                // modifiersClassNames={{ fasted: 'bg-accent text-accent-foreground rounded-full' }}
-                initialFocus
-              />
-          </CardContent>
-       </Card>
     </div>
   );
 };
 
 export default FastingCalendar;
-
-
-    
