@@ -1,5 +1,5 @@
 import { collection, getDocs, doc, DocumentData } from 'firebase/firestore';
-import { firestore } from '../lib/firebase';
+import { db } from '@/lib/firebaseClient';
 
 /**
  * Represents an exercise.
@@ -24,7 +24,7 @@ export interface Exercise {
  * @returns A promise resolving to an array of Exercise objects.
  */
 export async function getExercises(): Promise<Exercise[]> {
-  const exercisesCollection = collection(firestore, 'exercises');
+  const exercisesCollection = collection(db, 'exercises');
   const exercisesSnapshot = await getDocs(exercisesCollection);
 
   const exercises: Exercise[] = exercisesSnapshot.docs.map(doc => {
@@ -38,8 +38,3 @@ export async function getExercises(): Promise<Exercise[]> {
 
   return exercises;
 }
-
-
-
-
-
