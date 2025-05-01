@@ -2,7 +2,9 @@
 
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import {NextResponse} from 'next/server';
+import {retry, Retry} from "google-gax";
 
+const {Exponential} = retry;
 const MODEL_NAME = "gemini-pro";
 
 /**
@@ -29,7 +31,17 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({model: MODEL_NAME});
 
-    const result = await model.generateContent(message);
+    const retryableGenerateContent = new Retry({
+      retryCodes: ["UNAVAILABLE"],
+      backoffSettings: {
+        initialRetryDelayMillis: 1000,
+        retryDelayMultiplier: 1.3,
+        maxRetryDelayMillis: 60000,
+        totalTimeoutMillis: 300000
+      },
+      retryableStatusCodes: [503, 500]
+    }).wrap(model.generateContent.bind(model));
+    const result = await retryableGenerateContent(message);
     const response = result.response;
 
     if (!response.text()) {
