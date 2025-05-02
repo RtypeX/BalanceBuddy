@@ -1,63 +1,26 @@
-/**
- * @fileOverview Initializes and provides access to the Google Generative AI instance.
- *
- * - getGeminiModel - Returns a configured generative model instance.
- */
+'use server';
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
-const MODEL_NAME = "gemini-pro"; // Using a standard model
-
-let genAIInstance: GoogleGenerativeAI | null = null;
-
-function getGenAIInstance(): GoogleGenerativeAI {
-  if (!genAIInstance) {
-    const apiKey = process.env.GOOGLE_GENAI_API_KEY;
-
-    if (!apiKey) {
-      console.error("GOOGLE_GENAI_API_KEY environment variable not found.");
-      // In a real app, you might want to throw an error or handle this more gracefully
-      // For now, we'll throw to make the configuration issue clear.
-      throw new Error("GOOGLE_GENAI_API_KEY is not set. Please add it to your .env file.");
-    }
-    genAIInstance = new GoogleGenerativeAI(apiKey);
-  }
-  return genAIInstance;
+// Ensure GOOGLE_GENAI_API_KEY is set in your .env file
+if (!process.env.GOOGLE_GENAI_API_KEY) {
+  console.warn(
+    'GOOGLE_GENAI_API_KEY environment variable not found. AI features may not work.'
+  );
+  // Optionally throw an error if the API key is absolutely required at startup
+  // throw new Error("GOOGLE_GENAI_API_KEY environment variable is not set.");
 }
 
-/**
- * Gets the configured generative model instance.
- * @returns The generative model instance.
- */
-export function getGeminiModel() {
-  const genAI = getGenAIInstance();
-  // Basic safety settings - adjust as needed
-  const safetySettings = [
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-  ];
-
-  // For text-only input, use the gemini-pro model
-  const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      // Optional: Add system instruction if needed
-      // systemInstruction: "You are BalanceBot...",
-      safetySettings,
-    });
-
-  return model;
-}
+export const ai = genkit({
+  plugins: [
+    googleAI({
+      // Ensure GOOGLE_GENAI_API_KEY is set in your environment variables
+      apiKey: process.env.GOOGLE_GENAI_API_KEY || 'YOUR_PLACEHOLDER_API_KEY', // Provide a fallback or handle error
+    }),
+  ],
+  // Specify a default model
+  model: 'googleai/gemini-1.5-flash-latest', // Or 'gemini-pro' or another suitable model
+  logLevel: 'debug', // Optional: for detailed logs during development
+  enableTracingAndMetrics: true, // Optional: for monitoring
+});
