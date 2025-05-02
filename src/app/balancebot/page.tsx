@@ -41,7 +41,12 @@ export default function BalanceBotPage() {
       setMessages(prev => [...prev, { role: 'bot', content: response }]);
     } catch (error){
        console.error("Error generating response:", error);
-      setMessages(prev => [...prev, { role: 'error', content: 'Sorry, failed to get response.' }]);
+      // Check if the response from the flow already indicates an error
+      if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message.includes('Sorry, I encountered an error')) {
+          setMessages(prev => [...prev, { role: 'error', content: error.message }]);
+      } else {
+           setMessages(prev => [...prev, { role: 'error', content: 'Sorry, failed to get response.' }]);
+      }
     } finally {
       setIsLoading(false);
     }
