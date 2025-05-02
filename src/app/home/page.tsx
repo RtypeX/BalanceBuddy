@@ -1,4 +1,3 @@
-
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -14,9 +13,8 @@ import {ModeToggle} from "@/components/ModeToggle";
 import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
-// Removed import: import BalanceBotPage from "@/app/balancebot/page";
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
-import { BarChart3, Dumbbell, FileText, User, /* Bot, */ Calendar, Weight } from 'lucide-react'; // Removed Bot icon
+import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight } from 'lucide-react'; // Added Bot icon
 
 export default function Home() {
   const router = useRouter();
@@ -119,8 +117,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* BalanceBot Card Removed */}
-          {/*
+          {/* BalanceBot Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
                <Bot className="h-12 w-12 mb-2 text-primary" />
@@ -131,7 +128,7 @@ export default function Home() {
               </Button>
             </CardContent>
           </Card>
-          */}
+
 
           {/* Fasting Calendar Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">

@@ -1,4 +1,3 @@
-
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
@@ -13,7 +12,7 @@ export const ai = genkit({
       apiKey,
     }),
   ],
-  model: 'googleai/gemini-1.5-flash-latest',
-  logLevel: 'debug',
-  enableTracingAndMetrics: true,
+  model: 'googleai/gemini-1.5-flash-latest', // Or another suitable model
+  logLevel: 'debug', // Optional: for detailed logs during development
+  enableTracingAndMetrics: true, // Optional: for monitoring
 });
