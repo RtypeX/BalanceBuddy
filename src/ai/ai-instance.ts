@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Initializes and provides access to the Google Generative AI instance.
  *
@@ -7,7 +6,7 @@
 
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-1.5-flash-latest"; // Using a recommended model
+const MODEL_NAME = "gemini-pro"; // Using a standard model
 
 let genAIInstance: GoogleGenerativeAI | null = null;
 
@@ -17,7 +16,9 @@ function getGenAIInstance(): GoogleGenerativeAI {
 
     if (!apiKey) {
       console.error("GOOGLE_GENAI_API_KEY environment variable not found.");
-      throw new Error("GOOGLE_GENAI_API_KEY is not set.");
+      // In a real app, you might want to throw an error or handle this more gracefully
+      // For now, we'll throw to make the configuration issue clear.
+      throw new Error("GOOGLE_GENAI_API_KEY is not set. Please add it to your .env file.");
     }
     genAIInstance = new GoogleGenerativeAI(apiKey);
   }
@@ -53,7 +54,8 @@ export function getGeminiModel() {
   // For text-only input, use the gemini-pro model
   const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      // systemInstruction: "You are BalanceBot, a friendly and encouraging fitness and wellness assistant. Focus on providing helpful, safe, and positive advice related to exercise, nutrition, mindfulness, and general well-being. Avoid giving medical advice. If asked about topics outside of fitness and wellness, gently steer the conversation back or politely decline.",
+      // Optional: Add system instruction if needed
+      // systemInstruction: "You are BalanceBot...",
       safetySettings,
     });
 

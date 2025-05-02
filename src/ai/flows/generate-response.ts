@@ -57,44 +57,33 @@ function formatChatHistoryForGemini(history: ChatMessage[]): Content[] {
 export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
   const { history } = input;
 
-  // Ensure history is not empty
-  if (!history || history.length === 0) {
-    console.error("Error generating response: Chat history is empty.");
-    return { response: "It looks like there's no conversation yet. Send me a message!" };
+  // Ensure history is not empty and the last message is from the user
+  if (!history || history.length === 0 || history[history.length - 1]?.role !== 'user') {
+    console.error("Error generating response: Chat history is empty or last message not from user.");
+    return { response: "It looks like there's no conversation yet, or I missed your last message. Send me a message!" };
   }
 
   const model = getGeminiModel();
   const formattedHistory = formatChatHistoryForGemini(history);
 
-  // Extract the latest user message (last item in formattedHistory)
-  // The history should already include the latest user message before calling this function.
-  const latestMessageContent = formattedHistory.pop(); // Remove last message to send separately
+  // The history includes the latest user message. Pop it for sending separately.
+  const latestUserMessage = formattedHistory.pop();
 
-  if (!latestMessageContent || latestMessageContent.role !== 'user') {
-    console.error("Error generating response: Last message in history is not from the user or history is malformed.");
-    // Attempt to recover or return error
-    if(history.length > 0 && history[history.length-1].role === 'user'){
-        // If the formatting failed but the raw history looks okay, try sending just the last message
-         latestMessageContent = { role: 'user', parts: [{ text: history[history.length-1].content }] };
-         formattedHistory.pop(); // Remove the possibly incorrect last entry from formatted history too
-         console.warn("Attempting recovery by sending only the last user message.");
-    } else {
-        return { response: "I seem to have lost track of the conversation. Could you please repeat your last message?" };
-    }
+  // Basic check, though covered by the initial check
+  if (!latestUserMessage || latestUserMessage.role !== 'user') {
+      console.error("Internal error: History formatting failed.");
+      return { response: "I seem to have lost track of the conversation. Could you please repeat?" };
   }
 
 
   try {
     // Start chat with the history *before* the last user message
     const chat = model.startChat({
-      history: formattedHistory,
-      // generationConfig: { // Optional: Adjust generation parameters if needed
-      //   maxOutputTokens: 200,
-      // }
+      history: formattedHistory, // History excluding the latest user message
     });
 
     // Send the latest user message
-    const result = await chat.sendMessage(latestMessageContent.parts);
+    const result = await chat.sendMessage(latestUserMessage.parts);
     const response = result.response;
 
     if (!response?.text()) {
@@ -112,9 +101,17 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
   } catch (error: any) {
     console.error("Error calling Gemini API:", error);
     // Provide more specific feedback if possible
-    if (error.message.includes('API key not valid')) {
-        return { response: "There seems to be an issue with the API configuration. Please contact support." };
+    if (error.message.includes('API key not valid') || error.message.includes('API_KEY_INVALID')) {
+        return { response: "There seems to be an issue with the API configuration. Please check the API key." };
     }
+    if (error.message.includes('quota')) {
+         return { response: "The API quota has been exceeded. Please try again later." };
+    }
+     // Catch potential fetch errors or network issues
+    if (error instanceof TypeError && error.message.includes('fetch failed')) {
+        return { response: "Sorry, I couldn't connect to the AI service. Please check your network connection." };
+    }
+    // Generic error for other cases
     return { response: "Sorry, I encountered an error trying to generate a response. Please try again later." };
   }
 }
