@@ -24,37 +24,45 @@ export default function BalanceBotPage() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    // Use setTimeout to allow the DOM to update before scrolling
+    const timer = setTimeout(() => {
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      }
+    }, 0);
+    return () => clearTimeout(timer); // Cleanup timer on unmount or dependency change
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
 
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: input };
+  const handleSend = async () => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput) return;
+
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: trimmedInput };
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
-    const currentInput = input; // Capture input before clearing
     setInput(''); // Clear input immediately
 
     try {
       // Call the updated AI flow
-      const result = await generateResponse({ message: currentInput });
+      const result = await generateResponse({ message: trimmedInput });
 
       const botMsg: ChatMessage = {
         id: crypto.randomUUID(),
+        // Check if the response indicates an error from the flow's catch block
         role: result.response.startsWith('Sorry, I encountered an error') ? 'error' : 'bot',
         content: result.response
       };
       setMessages(prev => [...prev, botMsg]);
 
     } catch (error){
-       console.error("Error generating response:", error);
+       // This catch block might be less likely to trigger if the flow handles errors internally,
+       // but it's good practice to keep it for unexpected issues during the API call itself.
+       console.error("Error calling generateResponse:", error);
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
-            content: 'Sorry, failed to get response.'
+            content: 'Sorry, failed to get response due to a network or unexpected error.'
         };
        setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -77,44 +85,48 @@ export default function BalanceBotPage() {
         </CardHeader>
         <CardContent className="space-y-4">
            {/* Chat Area */}
-          <ScrollArea className="h-96 w-full rounded-md border p-4" ref={scrollAreaRef}>
-            {messages.length === 0 && (
-              <p className="text-center text-muted-foreground">Start chatting with BalanceBot!</p>
-            )}
-            {messages.map((msg) => (
-              <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                 {msg.role !== 'user' && (
-                    <Avatar className="h-8 w-8 border">
-                        <AvatarFallback>BB</AvatarFallback>
-                    </Avatar>
-                 )}
-                 <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : msg.role === 'error'
-                        ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
-                        : 'bg-muted text-muted-foreground rounded-bl-none'
-                    }`}
-                  >
-                   {msg.content}
-                 </div>
-                  {msg.role === 'user' && (
-                    <Avatar className="h-8 w-8 border">
-                        <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                 )}
-              </div>
-            ))}
-            {isLoading && (
-               <div className="flex justify-start items-start gap-3 mb-3">
-                    <Avatar className="h-8 w-8 border">
-                        <AvatarFallback>BB</AvatarFallback>
-                    </Avatar>
-                   <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
-                       Typing...
-                   </div>
-               </div>
-            )}
+          <ScrollArea className="h-96 w-full rounded-md border p-4" >
+             {/* We need a div inside ScrollArea to correctly get scrollHeight */}
+            <div ref={scrollAreaRef}>
+                {messages.length === 0 && (
+                <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
+                )}
+                {messages.map((msg) => (
+                <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {msg.role !== 'user' && (
+                        <Avatar className="h-8 w-8 border">
+                            {/* You could potentially use a different image/icon for the bot */}
+                            <AvatarFallback>BB</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
+                        msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground rounded-br-none'
+                            : msg.role === 'error'
+                            ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
+                            : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
+                        }`}
+                    >
+                    {msg.content}
+                    </div>
+                    {msg.role === 'user' && (
+                        <Avatar className="h-8 w-8 border">
+                            <AvatarFallback>U</AvatarFallback> {/* Placeholder for User */}
+                        </Avatar>
+                    )}
+                </div>
+                ))}
+                {isLoading && (
+                <div className="flex justify-start items-start gap-3 mb-3">
+                        <Avatar className="h-8 w-8 border">
+                            <AvatarFallback>BB</AvatarFallback>
+                        </Avatar>
+                    <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
+                        Typing...
+                    </div>
+                </div>
+                )}
+            </div> {/* End of scrollable content div */}
           </ScrollArea>
 
            {/* Input Area */}
@@ -125,7 +137,7 @@ export default function BalanceBotPage() {
               className="flex-1"
               placeholder="Ask me anything..."
               onKeyDown={e => {
-                 if (e.key === 'Enter' && !isLoading) {
+                 if (e.key === 'Enter' && !isLoading && input.trim()) {
                     e.preventDefault(); // Prevent form submission/newline
                     handleSend();
                  }
