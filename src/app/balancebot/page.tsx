@@ -1,21 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { generateResponse } from '@/ai/flows/generate-response';
+import { generateResponse } from '@/ai/flows/generate-response'; // Updated import
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input"; // Using Input instead of Textarea for single line
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Added Avatar
 
-interface Message {
+interface ChatMessage {
+  id: string; // Added for unique key prop
   role: 'user' | 'bot' | 'error';
   content: string;
 }
 
 export default function BalanceBotPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -30,23 +32,31 @@ export default function BalanceBotPage() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMsg: Message = { role: 'user', content: input };
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
     const currentInput = input; // Capture input before clearing
     setInput(''); // Clear input immediately
 
     try {
-      const { response } = await generateResponse({ message: currentInput });
-      setMessages(prev => [...prev, { role: 'bot', content: response }]);
+      // Call the updated AI flow
+      const result = await generateResponse({ message: currentInput });
+
+      const botMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: result.response.startsWith('Sorry, I encountered an error') ? 'error' : 'bot',
+        content: result.response
+      };
+      setMessages(prev => [...prev, botMsg]);
+
     } catch (error){
        console.error("Error generating response:", error);
-      // Check if the response from the flow already indicates an error
-      if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message.includes('Sorry, I encountered an error')) {
-          setMessages(prev => [...prev, { role: 'error', content: error.message }]);
-      } else {
-           setMessages(prev => [...prev, { role: 'error', content: 'Sorry, failed to get response.' }]);
-      }
+       const errorMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'error',
+            content: 'Sorry, failed to get response.'
+        };
+       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -71,23 +81,36 @@ export default function BalanceBotPage() {
             {messages.length === 0 && (
               <p className="text-center text-muted-foreground">Start chatting with BalanceBot!</p>
             )}
-            {messages.map((msg, i) => (
-              <div key={i} className={`mb-3 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                 {msg.role !== 'user' && (
+                    <Avatar className="h-8 w-8 border">
+                        <AvatarFallback>BB</AvatarFallback>
+                    </Avatar>
+                 )}
                  <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
                       msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary text-primary-foreground rounded-br-none'
                         : msg.role === 'error'
-                        ? 'bg-destructive text-destructive-foreground italic'
-                        : 'bg-muted text-muted-foreground'
+                        ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
+                        : 'bg-muted text-muted-foreground rounded-bl-none'
                     }`}
                   >
                    {msg.content}
                  </div>
+                  {msg.role === 'user' && (
+                    <Avatar className="h-8 w-8 border">
+                        <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                 )}
               </div>
             ))}
             {isLoading && (
-               <div className="flex justify-start mb-3">
-                   <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse">
+               <div className="flex justify-start items-start gap-3 mb-3">
+                    <Avatar className="h-8 w-8 border">
+                        <AvatarFallback>BB</AvatarFallback>
+                    </Avatar>
+                   <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
                        Typing...
                    </div>
                </div>

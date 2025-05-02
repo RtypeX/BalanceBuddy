@@ -40,9 +40,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
-    "firebase": "^11.6.0",
-    "genkit": "^1.0.4",
-    "@genkit-ai/googleai": "^1.0.4",
+    "firebase": "^10.14.1",
+    "genkit": "^1.6.2",
+    "@genkit-ai/googleai": "^1.6.2",
     "lucide-react": "^0.475.0",
     "next": "15.2.3",
     "next-themes": "*",
@@ -66,3 +66,4 @@
     "tsx": "^4.19.0"
   }
 }
+
