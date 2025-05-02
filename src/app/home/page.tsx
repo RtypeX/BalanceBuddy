@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExerciseList from '@/components/ExerciseList';
@@ -13,18 +14,19 @@ import {ModeToggle} from "@/components/ModeToggle";
 import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
-import BalanceBotPage from "@/app/balancebot/page";
+// Removed import: import BalanceBotPage from "@/app/balancebot/page";
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
-import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight } from 'lucide-react'; // Import new icon
+import { BarChart3, Dumbbell, FileText, User, /* Bot, */ Calendar, Weight } from 'lucide-react'; // Removed Bot icon
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
     const user = localStorage.getItem('user');
-    if (!user) {
-      router.push('/');
-    }
+    // Keep demo login behavior for now
+    // if (!user) {
+    //   router.push('/');
+    // }
   }, [router]);
 
   const handleLogout = () => {
@@ -117,10 +119,11 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* BalanceBot Card */}
+          {/* BalanceBot Card Removed */}
+          {/*
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
-               <Bot className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
+               <Bot className="h-12 w-12 mb-2 text-primary" />
               <h2 className="text-lg font-semibold mb-1">BalanceBot</h2>
               <p className="text-sm text-muted-foreground mb-3">Ask BalanceBot for workout advice.</p>
               <Button variant="outline" onClick={() => router.push('/balancebot')} className="w-full">
@@ -128,6 +131,7 @@ export default function Home() {
               </Button>
             </CardContent>
           </Card>
+          */}
 
           {/* Fasting Calendar Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">

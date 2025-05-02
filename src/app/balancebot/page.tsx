@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -6,13 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-// Import the new flow function directly
-import { generateResponse } from "@/ai/flows/generate-response";
+// Removed AI import: import { generateResponse } from "@/ai/flows/generate-response";
 
 // Define the structure for chat messages (consistent with UI)
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'error'; // Use 'assistant' for AI, 'error' for error messages
+  role: 'user' | 'assistant' | 'info'; // Use 'assistant' for AI, 'info' for messages from the app
   content: string;
   timestamp: number;
 }
@@ -21,9 +21,16 @@ interface ChatMessage {
 export default function BalanceBotPage() {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  // Use the ChatMessage interface for state
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Initialize with an informational message
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+    {
+        id: crypto.randomUUID(),
+        role: 'info',
+        content: 'BalanceBot is currently unavailable. This feature is under development.',
+        timestamp: Date.now(),
+    }
+  ]);
+  const [isLoading, setIsLoading] = useState(false); // Keep loading state (though unused for now)
   const chatHistoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,59 +39,11 @@ export default function BalanceBotPage() {
     }
   }, [chatHistory]);
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
+  // Placeholder submit handler - prevents sending messages
+  const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const userMessageContent = query.trim();
-    if (!userMessageContent || isLoading) return;
-
-    const newUserMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: userMessageContent,
-      timestamp: Date.now(),
-    };
-
-    // Add user message to history immediately for UI update
-    setChatHistory(prev => [...prev, newUserMessage]);
-    setQuery('');
-    setIsLoading(true);
-
-    try {
-      // Call the Genkit flow directly
-      const result = await generateResponse({ message: userMessageContent });
-
-      setIsLoading(false); // Stop loading indicator
-
-      if (result.response) {
-        const assistantMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: result.response,
-          timestamp: Date.now(),
-        };
-        setChatHistory(prev => [...prev, assistantMessage]);
-      } else {
-        // Handle cases where flow might return an empty response or error structure
-        console.warn("Received unexpected response format from flow:", result);
-        const assistantErrorMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'error',
-          content: 'Sorry, I received an unexpected response format. Please try again.',
-          timestamp: Date.now(),
-        };
-        setChatHistory(prev => [...prev, assistantErrorMessage]);
-      }
-    } catch (error: any) {
-      setIsLoading(false);
-      console.error("Error calling generateResponse flow:", error);
-      const assistantErrorMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'error',
-        content: error.message || 'An unexpected error occurred while getting the response.',
-        timestamp: Date.now(),
-      };
-      setChatHistory(prev => [...prev, assistantErrorMessage]);
-    }
+    // Do nothing as AI is disabled
+    console.log("Chat submit prevented - AI disabled.");
   };
 
   return (
@@ -100,7 +59,7 @@ export default function BalanceBotPage() {
           <div ref={chatHistoryRef} className="flex-grow space-y-4 overflow-y-auto mb-4 pr-2">
             {chatHistory.map((item) => (
               <div key={item.id} className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {item.role === 'assistant' && (
+                {(item.role === 'assistant' || item.role === 'info') && (
                   <Avatar className="mr-2 h-8 w-8 self-start">
                     <AvatarFallback className="bg-primary text-primary-foreground">BB</AvatarFallback>
                   </Avatar>
@@ -109,9 +68,9 @@ export default function BalanceBotPage() {
                   className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
                     item.role === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : item.role === 'error'
-                      ? 'bg-destructive text-destructive-foreground' // Style for errors
-                      : 'bg-muted text-muted-foreground' // Style for assistant
+                      : item.role === 'info'
+                      ? 'bg-secondary text-secondary-foreground italic' // Style for info messages
+                      : 'bg-muted text-muted-foreground' // Style for assistant (though none will be generated)
                   }`}
                 >
                   {/* Basic formatting (replace newlines with breaks) */}
@@ -129,40 +88,27 @@ export default function BalanceBotPage() {
                 )}
               </div>
             ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <Avatar className="mr-2 h-8 w-8 self-start">
-                  <AvatarFallback className="bg-primary text-primary-foreground">BB</AvatarFallback>
-                </Avatar>
-                <div className="rounded-xl px-4 py-2 bg-muted text-muted-foreground italic text-sm shadow-sm">
-                  BalanceBot is thinking...
-                </div>
-              </div>
-            )}
+            {/* Keep loading indicator structure if needed later */}
+            {/* {isLoading && ( ... )} */}
           </div>
           <form onSubmit={handleChatSubmit} className="mt-auto pt-4 border-t border-border">
             <div className="flex space-x-2 items-center">
               <Textarea
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Ask BalanceBot..."
+                placeholder="BalanceBot is currently unavailable..." // Updated placeholder
                 className="flex-grow rounded-xl resize-none"
                 rows={1}
-                disabled={isLoading}
+                disabled={true} // Disable the textarea
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleChatSubmit(e as unknown as React.FormEvent);
+                    // handleChatSubmit(e as unknown as React.FormEvent); // Keep commented out
                   }
                 }}
               />
-              <Button type="submit" className="rounded-xl" disabled={isLoading || !query.trim()}>
-                {isLoading ? (
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : 'Send'}
+              <Button type="submit" className="rounded-xl" disabled={true}> {/* Disable the send button */}
+                Send
               </Button>
             </div>
           </form>
