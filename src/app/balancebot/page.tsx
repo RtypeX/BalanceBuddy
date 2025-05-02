@@ -1,117 +1,114 @@
 
 'use client';
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import React, { useState, useEffect, useRef } from 'react';
+import { generateResponse } from '@/ai/flows/generate-response';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-// Removed AI import: import { generateResponse } from "@/ai/flows/generate-response";
+import { Input } from "@/components/ui/input"; // Using Input instead of Textarea for single line
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Define the structure for chat messages (consistent with UI)
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'info'; // Use 'assistant' for AI, 'info' for messages from the app
+interface Message {
+  role: 'user' | 'bot' | 'error';
   content: string;
-  timestamp: number;
 }
-
 
 export default function BalanceBotPage() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  // Initialize with an informational message
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    {
-        id: crypto.randomUUID(),
-        role: 'info',
-        content: 'BalanceBot is currently unavailable. This feature is under development.',
-        timestamp: Date.now(),
-    }
-  ]);
-  const [isLoading, setIsLoading] = useState(false); // Keep loading state (though unused for now)
-  const chatHistoryRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    if (chatHistoryRef.current) {
-      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [chatHistory]);
+  }, [messages]);
 
-  // Placeholder submit handler - prevents sending messages
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Do nothing as AI is disabled
-    console.log("Chat submit prevented - AI disabled.");
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMsg: Message = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+    const currentInput = input; // Capture input before clearing
+    setInput(''); // Clear input immediately
+
+    try {
+      const { response } = await generateResponse({ message: currentInput });
+      setMessages(prev => [...prev, { role: 'bot', content: response }]);
+    } catch (error){
+       console.error("Error generating response:", error);
+      setMessages(prev => [...prev, { role: 'error', content: 'Sorry, failed to get response.' }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen py-2 bg-background">
-      <div className="flex items-center justify-between p-4 w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-foreground">BalanceBot</h1>
-        <Button variant="secondary" onClick={() => router.push('/home')}>
-          Back to Home
-        </Button>
+    <div className="flex flex-col items-center justify-start min-h-screen py-6 px-4">
+       <div className="flex items-center justify-between p-4 w-full max-w-xl mb-4">
+          <h1 className="text-2xl font-semibold">BalanceBot</h1>
+          <Button variant="secondary" onClick={() => router.push('/home')}>
+            Back to Home
+          </Button>
       </div>
-      <Card className="w-full max-w-md rounded-lg shadow-md bg-card">
-        <CardContent className="p-6 flex flex-col h-[60vh]">
-          <div ref={chatHistoryRef} className="flex-grow space-y-4 overflow-y-auto mb-4 pr-2">
-            {chatHistory.map((item) => (
-              <div key={item.id} className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {(item.role === 'assistant' || item.role === 'info') && (
-                  <Avatar className="mr-2 h-8 w-8 self-start">
-                    <AvatarFallback className="bg-primary text-primary-foreground">BB</AvatarFallback>
-                  </Avatar>
-                )}
-                <div
-                  className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
-                    item.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : item.role === 'info'
-                      ? 'bg-secondary text-secondary-foreground italic' // Style for info messages
-                      : 'bg-muted text-muted-foreground' // Style for assistant (though none will be generated)
-                  }`}
-                >
-                  {/* Basic formatting (replace newlines with breaks) */}
-                  {item.content.split('\n').map((line, i, arr) => (
-                    <span key={i}>
-                      {line}
-                      {i < arr.length - 1 && <br />}
-                    </span>
-                  ))}
-                </div>
-                {item.role === 'user' && (
-                  <Avatar className="ml-2 h-8 w-8 self-start">
-                    <AvatarFallback>U</AvatarFallback>
-                  </Avatar>
-                )}
+
+      <Card className="w-full max-w-xl shadow-md rounded-lg">
+        <CardHeader>
+            <CardTitle>Chat with BalanceBot</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           {/* Chat Area */}
+          <ScrollArea className="h-96 w-full rounded-md border p-4" ref={scrollAreaRef}>
+            {messages.length === 0 && (
+              <p className="text-center text-muted-foreground">Start chatting with BalanceBot!</p>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} className={`mb-3 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                 <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : msg.role === 'error'
+                        ? 'bg-destructive text-destructive-foreground italic'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                   {msg.content}
+                 </div>
               </div>
             ))}
-            {/* Keep loading indicator structure if needed later */}
-            {/* {isLoading && ( ... )} */}
+            {isLoading && (
+               <div className="flex justify-start mb-3">
+                   <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse">
+                       Typing...
+                   </div>
+               </div>
+            )}
+          </ScrollArea>
+
+           {/* Input Area */}
+          <div className="flex items-center gap-2 pt-4 border-t">
+            <Input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              className="flex-1"
+              placeholder="Ask me anything..."
+              onKeyDown={e => {
+                 if (e.key === 'Enter' && !isLoading) {
+                    e.preventDefault(); // Prevent form submission/newline
+                    handleSend();
+                 }
+              }}
+              disabled={isLoading}
+            />
+            <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+              {isLoading ? '...' : 'Send'}
+            </Button>
           </div>
-          <form onSubmit={handleChatSubmit} className="mt-auto pt-4 border-t border-border">
-            <div className="flex space-x-2 items-center">
-              <Textarea
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="BalanceBot is currently unavailable..." // Updated placeholder
-                className="flex-grow rounded-xl resize-none"
-                rows={1}
-                disabled={true} // Disable the textarea
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    // handleChatSubmit(e as unknown as React.FormEvent); // Keep commented out
-                  }
-                }}
-              />
-              <Button type="submit" className="rounded-xl" disabled={true}> {/* Disable the send button */}
-                Send
-              </Button>
-            </div>
-          </form>
         </CardContent>
       </Card>
     </div>
