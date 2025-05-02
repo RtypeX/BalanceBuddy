@@ -71,7 +71,7 @@ const generateResponseFlow = ai.defineFlow<
       // Log the error for debugging
       console.error('Error in generateResponseFlow:', e);
       // Returning a structured error response might be better for the UI:
-       return { response: 'Sorry, I encountered an error. Please try again.' };
+       return { response: "Sorry, I encountered an error. Please try again." };
     }
   }
 );
