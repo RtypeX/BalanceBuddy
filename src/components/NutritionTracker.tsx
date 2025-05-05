@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -13,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfDay } from 'date-fns';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { Progress } from "@/components/ui/progress"; // Import Progress component
 
 // Types
 interface FoodItem {
@@ -50,6 +50,15 @@ const getStoredNutritionLog = (): Record<string, DailyLog> => {
 
 const saveStoredNutritionLog = (log: Record<string, DailyLog>) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
+};
+
+// --- Daily Goals ---
+// TODO: Allow users to set these goals, possibly fetch from profile
+const DAILY_GOALS = {
+    calories: 2000,
+    protein: 150, // grams
+    carbs: 250,   // grams
+    fat: 65      // grams
 };
 
 const NutritionTracker: React.FC = () => {
@@ -166,6 +175,15 @@ const NutritionTracker: React.FC = () => {
     return totals;
   }, [currentDayLog]);
 
+  // Calculate progress percentages
+  const progressPercentages = useMemo(() => ({
+      calories: DAILY_GOALS.calories > 0 ? Math.min((dailyTotals.calories / DAILY_GOALS.calories) * 100, 100) : 0,
+      protein: DAILY_GOALS.protein > 0 ? Math.min((dailyTotals.protein / DAILY_GOALS.protein) * 100, 100) : 0,
+      carbs: DAILY_GOALS.carbs > 0 ? Math.min((dailyTotals.carbs / DAILY_GOALS.carbs) * 100, 100) : 0,
+      fat: DAILY_GOALS.fat > 0 ? Math.min((dailyTotals.fat / DAILY_GOALS.fat) * 100, 100) : 0,
+  }), [dailyTotals]);
+
+
   return (
     <div className="space-y-6">
       {/* Date Selection */}
@@ -236,34 +254,65 @@ const NutritionTracker: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Daily Log for {selectedDate ? format(selectedDate, 'PPP') : '...'}</CardTitle>
-          <CardDescription>Summary of your meals and totals for the selected day.</CardDescription>
+          <CardDescription>Summary of your meals and progress towards daily goals.</CardDescription>
         </CardHeader>
         <CardContent>
-          {currentDayLog.meals.length === 0 ? (
+          {currentDayLog.meals.length === 0 && dailyTotals.calories === 0 ? (
             <p className="text-center text-muted-foreground">No meals logged for this day yet.</p>
           ) : (
             <div className="space-y-6">
-              {/* Daily Totals */}
-              <Card className="bg-muted/50">
-                  <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Daily Totals</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                      <p><span className="font-semibold">Calories:</span> {dailyTotals.calories.toFixed(0)} kcal</p>
-                      <p><span className="font-semibold">Protein:</span> {dailyTotals.protein.toFixed(1)} g</p>
-                      <p><span className="font-semibold">Carbs:</span> {dailyTotals.carbs.toFixed(1)} g</p>
-                      <p><span className="font-semibold">Fat:</span> {dailyTotals.fat.toFixed(1)} g</p>
-                  </CardContent>
-              </Card>
+               {/* Daily Progress Bars */}
+               <Card className="bg-muted/50">
+                   <CardHeader className="pb-2">
+                       <CardTitle className="text-lg">Daily Progress</CardTitle>
+                       <CardDescription>Towards default goals (Calories: {DAILY_GOALS.calories}kcal, Protein: {DAILY_GOALS.protein}g, Carbs: {DAILY_GOALS.carbs}g, Fat: {DAILY_GOALS.fat}g)</CardDescription>
+                   </CardHeader>
+                   <CardContent className="space-y-3 pt-2">
+                       {/* Calories */}
+                       <div>
+                           <div className="flex justify-between text-sm mb-1">
+                               <span className="font-medium">Calories</span>
+                               <span className="text-muted-foreground">{dailyTotals.calories.toFixed(0)} / {DAILY_GOALS.calories} kcal</span>
+                           </div>
+                           <Progress value={progressPercentages.calories} className="h-2" />
+                       </div>
+                       {/* Protein */}
+                       <div>
+                           <div className="flex justify-between text-sm mb-1">
+                               <span className="font-medium">Protein</span>
+                               <span className="text-muted-foreground">{dailyTotals.protein.toFixed(1)} / {DAILY_GOALS.protein} g</span>
+                           </div>
+                           <Progress value={progressPercentages.protein} className="h-2" />
+                       </div>
+                       {/* Carbs */}
+                       <div>
+                           <div className="flex justify-between text-sm mb-1">
+                               <span className="font-medium">Carbohydrates</span>
+                               <span className="text-muted-foreground">{dailyTotals.carbs.toFixed(1)} / {DAILY_GOALS.carbs} g</span>
+                           </div>
+                           <Progress value={progressPercentages.carbs} className="h-2" />
+                       </div>
+                       {/* Fat */}
+                       <div>
+                           <div className="flex justify-between text-sm mb-1">
+                               <span className="font-medium">Fat</span>
+                               <span className="text-muted-foreground">{dailyTotals.fat.toFixed(1)} / {DAILY_GOALS.fat} g</span>
+                           </div>
+                           <Progress value={progressPercentages.fat} className="h-2" />
+                       </div>
+                   </CardContent>
+               </Card>
+
 
               <Separator />
 
               {/* Meal Breakdown */}
-              <ScrollArea className="h-[400px] w-full">
+              <h3 className="text-md font-semibold pt-2">Meal Details</h3>
+              <ScrollArea className="h-[300px] w-full">
                 <div className="space-y-4 pr-4">
                   {currentDayLog.meals.map(meal => (
                     <div key={meal.id}>
-                      <h3 className="text-md font-semibold mb-2 border-b pb-1">{meal.name}</h3>
+                      <h4 className="text-md font-semibold mb-2 border-b pb-1">{meal.name}</h4>
                       {meal.foods.length === 0 ? (
                           <p className="text-xs text-muted-foreground pl-2">No items logged for this meal.</p>
                       ): (
@@ -286,6 +335,9 @@ const NutritionTracker: React.FC = () => {
                       )}
                     </div>
                   ))}
+                    {currentDayLog.meals.length === 0 && dailyTotals.calories > 0 && (
+                        <p className="text-center text-muted-foreground">No meals specified, but totals exist.</p>
+                    )}
                 </div>
               </ScrollArea>
             </div>
