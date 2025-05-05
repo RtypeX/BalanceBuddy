@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { Exercise, getExercises } from '@/services/exercise';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,9 +41,7 @@ const WorkoutBuilder: React.FC = () => {
     const fetchExercises = async () => {
       const exercises = await getExercises();
       setAllExercises(exercises);
-      if (exercises.length > 0) {
-        setSelectedExerciseName(exercises[0].name); // Default selection
-      }
+      // Default selection removed, will use placeholder
     };
     fetchExercises();
 
@@ -58,6 +55,12 @@ const WorkoutBuilder: React.FC = () => {
       }
     }
   }, []);
+
+  // Sort exercises alphabetically for the dropdown
+  const sortedExercises = useMemo(() => {
+    return [...allExercises].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allExercises]);
+
 
   // Save routines to localStorage whenever they change
   useEffect(() => {
@@ -85,12 +88,14 @@ const WorkoutBuilder: React.FC = () => {
         name: finalExerciseName,
         description: 'Custom exercise', // Default description
         muscleGroup: 'Unknown', // Default muscle group
+        tutorial: 'N/A', // Default tutorial
       };
     } else {
       if (!selectedExerciseName) {
         toast({ variant: "destructive", title: "Error", description: "Please select an exercise." });
         return;
       }
+      // Use the original unsorted list for finding the exercise data
       exerciseToAdd = allExercises.find(ex => ex.name === selectedExerciseName) || null;
       if (exerciseToAdd) {
         finalExerciseName = exerciseToAdd.name;
@@ -114,11 +119,7 @@ const WorkoutBuilder: React.FC = () => {
     setSets('3');
     setReps('10');
     setCustomExerciseName(''); // Reset custom input
-    if (allExercises.length > 0) {
-      setSelectedExerciseName(allExercises[0].name); // Reset select to default
-    } else {
-       setSelectedExerciseName('');
-    }
+    setSelectedExerciseName(''); // Reset select to placeholder
 
     toast({ title: "Exercise Added", description: `${finalExerciseName} added to the routine.` });
   };
@@ -219,8 +220,8 @@ const WorkoutBuilder: React.FC = () => {
                 <SelectValue placeholder="Select an exercise" />
               </SelectTrigger>
               <SelectContent>
-                {allExercises.length > 0 ? (
-                  allExercises.map((ex) => (
+                {sortedExercises.length > 0 ? ( // Use sortedExercises here
+                  sortedExercises.map((ex) => ( // Use sortedExercises here
                     <SelectItem key={ex.name} value={ex.name}>{ex.name}</SelectItem>
                   ))
                 ) : (
