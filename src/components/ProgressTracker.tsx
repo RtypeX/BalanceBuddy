@@ -31,7 +31,7 @@ interface ExerciseLogEntry extends BaseLogEntry {
 
 interface SportLogEntry extends BaseLogEntry {
   logType: 'sport';
-  sportName: string;
+  sportName: string; // This will store the final sport name (e.g., "Basketball" or "Custom: Kayaking")
   exerciseType?: never; // Ensure exerciseType is not present for sport
 }
 
@@ -61,7 +61,8 @@ const ProgressTracker: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [logType, setLogType] = useState<LogType>('exercise'); // State for exercise/sport selection
   const [exerciseType, setExerciseType] = useState<string>('');
-  const [sportName, setSportName] = useState<string>('');
+  const [sportSelection, setSportSelection] = useState<string>(''); // Stores the dropdown value ('Basketball', 'Other', etc.)
+  const [customSportName, setCustomSportName] = useState<string>(''); // Stores the user's input for 'Other'
   const [duration, setDuration] = useState<string>('');
   const [calories, setCalories] = useState<string>('');
   const { toast } = useToast();
@@ -104,12 +105,14 @@ const ProgressTracker: React.FC = () => {
     }
 
     let newLog: WorkoutLogEntry;
+    let loggedActivityName = ''; // For the toast message
 
     if (logType === 'exercise') {
       if (!exerciseType) {
         toast({ variant: "destructive", title: "Missing Information", description: "Please select an exercise type." });
         return;
       }
+      loggedActivityName = exerciseType;
       newLog = {
         id: crypto.randomUUID(),
         date: selectedDate,
@@ -119,15 +122,24 @@ const ProgressTracker: React.FC = () => {
         calories: caloriesNum,
       };
     } else { // logType === 'sport'
-       if (!sportName) {
-        toast({ variant: "destructive", title: "Missing Information", description: "Please select or enter a sport name." });
-        return;
-      }
+       let finalSportName = sportSelection; // Start with the dropdown selection
+       if (sportSelection === 'Other') {
+           if (!customSportName.trim()) {
+               toast({ variant: "destructive", title: "Missing Information", description: "Please specify the sport name." });
+               return;
+           }
+           finalSportName = customSportName.trim(); // Use the custom input if 'Other' was selected
+       } else if (!sportSelection) {
+           toast({ variant: "destructive", title: "Missing Information", description: "Please select or enter a sport name." });
+           return;
+       }
+
+      loggedActivityName = finalSportName;
       newLog = {
         id: crypto.randomUUID(),
         date: selectedDate,
         logType: 'sport',
-        sportName,
+        sportName: finalSportName, // Use the determined final sport name
         duration: durationNum,
         calories: caloriesNum,
       };
@@ -140,17 +152,27 @@ const ProgressTracker: React.FC = () => {
 
     toast({
       title: "Activity Logged",
-      description: `${logType === 'exercise' ? exerciseType : sportName} on ${format(selectedDate, 'PPP')} added successfully.`,
+      description: `${loggedActivityName} on ${format(selectedDate, 'PPP')} added successfully.`,
     });
 
     // Reset form
     setSelectedDate(new Date());
     setExerciseType('');
-    setSportName('');
+    setSportSelection(''); // Reset dropdown selection
+    setCustomSportName(''); // Reset custom sport input
     setDuration('');
     setCalories('');
     // setLogType('exercise'); // Optionally reset log type selector
   };
+
+   // Handle sport selection change
+   const handleSportSelectionChange = (value: string) => {
+        setSportSelection(value);
+        // Clear custom input if a specific sport (not 'Other') is chosen
+        if (value !== 'Other') {
+            setCustomSportName('');
+        }
+   }
 
   return (
     <div className="space-y-6">
@@ -202,15 +224,14 @@ const ProgressTracker: React.FC = () => {
                      <SelectItem value="Walking">Walking</SelectItem>
                      <SelectItem value="Running">Running</SelectItem>
                      <SelectItem value="Cycling">Cycling</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem> {/* Keep 'Other' for Exercise too if needed */}
                   </SelectContent>
                 </Select>
               </div>
-            ) : (
+            ) : ( // logType === 'sport'
               <div className="space-y-2">
                 <Label htmlFor="sportName">Sport Name</Label>
-                 {/* Option 1: Select with "Other" */}
-                 <Select value={sportName} onValueChange={setSportName}>
+                 <Select value={sportSelection} onValueChange={handleSportSelectionChange}>
                     <SelectTrigger id="sportName">
                         <SelectValue placeholder="Select sport" />
                     </SelectTrigger>
@@ -225,26 +246,19 @@ const ProgressTracker: React.FC = () => {
                         <SelectItem value="Other">Other (Specify Below)</SelectItem>
                     </SelectContent>
                  </Select>
-                 {/* Optionally add an input for "Other" */}
-                 {/* {sportName === 'Other' && (
-                    <Input
-                        id="otherSportName"
-                        type="text"
-                        // value={customSportName}
-                        // onChange={(e) => setCustomSportName(e.target.value)}
-                        placeholder="Specify other sport"
-                        className="mt-2"
-                    />
-                 )} */}
-
-                 {/* Option 2: Simple Input (uncomment below and remove Select) */}
-                 {/* <Input
-                    id="sportName"
-                    type="text"
-                    value={sportName}
-                    onChange={(e) => setSportName(e.target.value)}
-                    placeholder="e.g., Basketball, Soccer"
-                 /> */}
+                 {/* Conditionally render the input for "Other" sport */}
+                 {sportSelection === 'Other' && (
+                    <div className="space-y-2 mt-2"> {/* Added margin-top */}
+                         <Label htmlFor="customSportName" className="text-sm text-muted-foreground">Specify Sport</Label>
+                        <Input
+                            id="customSportName"
+                            type="text"
+                            value={customSportName}
+                            onChange={(e) => setCustomSportName(e.target.value)}
+                            placeholder="e.g., Kayaking, Rock Climbing"
+                        />
+                    </div>
+                 )}
               </div>
             )}
 
