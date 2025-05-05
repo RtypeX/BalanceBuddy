@@ -15,7 +15,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 interface WeightLogEntry {
   id: string;
   date: string; // Store date as ISO string for consistency in localStorage
-  weight: number;
+  weight: number; // Weight in lbs
 }
 
 // Helper to get logs from localStorage
@@ -146,14 +146,14 @@ const WeightTracker: React.FC = () => {
   const handleSetGoal = () => {
     const goalNum = parseFloat(goalWeightInput);
     if (isNaN(goalNum) || goalNum <= 0) {
-      toast({ variant: "destructive", title: "Invalid Goal", description: "Please enter a valid goal weight." });
+      toast({ variant: "destructive", title: "Invalid Goal", description: "Please enter a valid goal weight in pounds." });
       setGoalWeight(null);
       saveStoredWeightGoal(null);
       setGoalWeightInput('');
     } else {
       setGoalWeight(goalNum);
       saveStoredWeightGoal(goalNum);
-      toast({ title: "Goal Set", description: `Weight goal set to ${goalNum} kg.` });
+      toast({ title: "Goal Set", description: `Weight goal set to ${goalNum.toFixed(1)} lbs.` });
     }
   };
 
@@ -188,14 +188,14 @@ const WeightTracker: React.FC = () => {
         progressDescription = "Goal achieved!";
     } else if ((totalChangeNeeded > 0 && changeAchieved < 0) || (totalChangeNeeded < 0 && changeAchieved > 0)) {
         progressPercent = 0; // Moving away from goal
-        progressDescription = `Moving away from goal. Current: ${currentWeight.toFixed(1)}kg`;
+        progressDescription = `Moving away from goal. Current: ${currentWeight.toFixed(1)} lbs`;
     }
      else {
       progressPercent = Math.abs((changeAchieved / totalChangeNeeded) * 100);
-      progressDescription = `Current: ${currentWeight.toFixed(1)}kg / Goal: ${goalWeight.toFixed(1)}kg`;
+      progressDescription = `Current: ${currentWeight.toFixed(1)} lbs / Goal: ${goalWeight.toFixed(1)} lbs`;
     }
   } else if (currentWeight !== null) {
-      progressDescription = `Current: ${currentWeight.toFixed(1)}kg. Set a goal to track progress.`;
+      progressDescription = `Current: ${currentWeight.toFixed(1)} lbs. Set a goal to track progress.`;
   }
 
 
@@ -205,7 +205,7 @@ const WeightTracker: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Log Your Weight</CardTitle>
-          <CardDescription>Enter your weight for today or a specific date.</CardDescription>
+          <CardDescription>Enter your weight (in lbs) for today or a specific date.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddWeightLog} className="space-y-4">
@@ -215,14 +215,14 @@ const WeightTracker: React.FC = () => {
                     <DatePicker date={selectedDate} setDate={setSelectedDate} />
                 </div>
                 <div className="space-y-2 flex-1">
-                    <Label htmlFor="currentWeight">Weight (kg)</Label>
+                    <Label htmlFor="currentWeight">Weight (lbs)</Label>
                     <Input
                     id="currentWeight"
                     type="number"
                     step="0.1"
                     value={currentWeightInput}
                     onChange={(e) => setCurrentWeightInput(e.target.value)}
-                    placeholder="e.g., 75.5"
+                    placeholder="e.g., 165.5"
                     />
                 </div>
             </div>
@@ -235,19 +235,19 @@ const WeightTracker: React.FC = () => {
         <Card>
             <CardHeader>
                 <CardTitle>Weight Goal</CardTitle>
-                <CardDescription>Set or update your target weight.</CardDescription>
+                <CardDescription>Set or update your target weight (in lbs).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="flex flex-col sm:flex-row gap-4 items-end">
                     <div className="space-y-2 flex-1">
-                        <Label htmlFor="goalWeight">Goal Weight (kg)</Label>
+                        <Label htmlFor="goalWeight">Goal Weight (lbs)</Label>
                         <Input
                             id="goalWeight"
                             type="number"
                             step="0.1"
                             value={goalWeightInput}
                             onChange={(e) => setGoalWeightInput(e.target.value)}
-                            placeholder="e.g., 70.0"
+                            placeholder="e.g., 160.0"
                         />
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
@@ -256,7 +256,7 @@ const WeightTracker: React.FC = () => {
                     </div>
                 </div>
                  {goalWeight !== null && (
-                     <p className="text-sm text-muted-foreground">Your current goal is {goalWeight.toFixed(1)} kg.</p>
+                     <p className="text-sm text-muted-foreground">Your current goal is {goalWeight.toFixed(1)} lbs.</p>
                  )}
             </CardContent>
         </Card>
@@ -270,7 +270,7 @@ const WeightTracker: React.FC = () => {
                <CardContent className="space-y-2">
                    <Progress value={progressPercent} className="w-full h-3" />
                    <p className="text-sm text-muted-foreground text-center">{progressDescription}</p>
-                    {startWeight !== null && <p className="text-xs text-center text-muted-foreground">Start: {startWeight.toFixed(1)}kg</p>}
+                    {startWeight !== null && <p className="text-xs text-center text-muted-foreground">Start: {startWeight.toFixed(1)} lbs</p>}
                </CardContent>
            </Card>
        )}
@@ -280,7 +280,7 @@ const WeightTracker: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Weight History</CardTitle>
-          <CardDescription>Your weight progress over time.</CardDescription>
+          <CardDescription>Your weight progress over time (in lbs).</CardDescription>
         </CardHeader>
         <CardContent>
           {weightLog.length > 1 ? (
@@ -288,14 +288,14 @@ const WeightTracker: React.FC = () => {
               <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} domain={['dataMin - 2', 'dataMax + 2']} allowDataOverflow={true}/>
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }} itemStyle={{ color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }} />
-                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} name="Weight (kg)" />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} domain={['dataMin - 5', 'dataMax + 5']} allowDataOverflow={true} unit=" lbs"/> {/* Adjusted domain slightly for lbs */}
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }} itemStyle={{ color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }} formatter={(value: number) => [`${value.toFixed(1)} lbs`, 'Weight']}/>
+                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} name="Weight" unit=" lbs"/>
                 {goalWeight !== null && (
-                    <ReferenceLine y={goalWeight} label={{ value: `Goal: ${goalWeight} kg`, position: 'insideTopRight', fill: 'hsl(var(--primary))', fontSize: 12 }} stroke="hsl(var(--primary))" strokeDasharray="3 3" />
+                    <ReferenceLine y={goalWeight} label={{ value: `Goal: ${goalWeight.toFixed(1)} lbs`, position: 'insideTopRight', fill: 'hsl(var(--primary))', fontSize: 12 }} stroke="hsl(var(--primary))" strokeDasharray="3 3" />
                 )}
                  {startWeight !== null && (
-                    <ReferenceLine y={startWeight} label={{ value: `Start: ${startWeight} kg`, position: 'insideBottomLeft', fill: 'hsl(var(--accent-foreground))', fontSize: 12 }} stroke="hsl(var(--accent))" strokeDasharray="3 3" />
+                    <ReferenceLine y={startWeight} label={{ value: `Start: ${startWeight.toFixed(1)} lbs`, position: 'insideBottomLeft', fill: 'hsl(var(--accent-foreground))', fontSize: 12 }} stroke="hsl(var(--accent))" strokeDasharray="3 3" />
                  )}
               </LineChart>
             </ResponsiveContainer>
@@ -309,7 +309,7 @@ const WeightTracker: React.FC = () => {
        <Card>
            <CardHeader>
                <CardTitle>Weight Log Details</CardTitle>
-               <CardDescription>A detailed list of your weight entries.</CardDescription>
+               <CardDescription>A detailed list of your weight entries (in lbs).</CardDescription>
            </CardHeader>
            <CardContent>
                <ScrollArea className="h-[300px] w-full">
@@ -320,7 +320,7 @@ const WeightTracker: React.FC = () => {
                            <thead>
                                <tr className="border-b">
                                    <th className="text-left p-2 font-medium text-muted-foreground">Date</th>
-                                   <th className="text-right p-2 font-medium text-muted-foreground">Weight (kg)</th>
+                                   <th className="text-right p-2 font-medium text-muted-foreground">Weight (lbs)</th>
                                </tr>
                            </thead>
                            <tbody>
