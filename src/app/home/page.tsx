@@ -106,18 +106,6 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* Profile Card */}
-          <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
-            <CardContent className="p-4 flex flex-col items-center text-center">
-               <User className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
-              <h2 className="text-lg font-semibold mb-1">Profile</h2>
-              <p className="text-sm text-muted-foreground mb-3">Manage your profile and settings.</p>
-              <Button variant="outline" onClick={() => router.push('/profile')} className="w-full">
-                Edit Profile
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* BalanceBot Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
@@ -166,8 +154,19 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
+
+           {/* Profile Card - Moved to the end */}
+           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+               <User className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
+              <h2 className="text-lg font-semibold mb-1">Profile</h2>
+              <p className="text-sm text-muted-foreground mb-3">Manage your profile and settings.</p>
+              <Button variant="outline" onClick={() => router.push('/profile')} className="w-full">
+                Edit Profile
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
-}
