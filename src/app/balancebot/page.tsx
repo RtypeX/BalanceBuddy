@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -6,8 +7,8 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added AvatarImage
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image'; // Import Image
 
 // Define the structure for a chat message
@@ -16,6 +17,15 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'error'; // Role can be user, bot (assistant), or error
   content: string;
 }
+
+// Simple function to convert **bold** markdown to <strong> tags
+const renderMarkdownBold = (text: string) => {
+  // Replace **text** with <strong>text</strong>
+  // Use a non-greedy match .*? to handle multiple bold sections correctly
+  const html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  return { __html: html }; // Return object for dangerouslySetInnerHTML
+};
+
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -74,32 +84,46 @@ export default function BalanceBotPage() {
           // Attempt to parse the JSON error response *from our API route*
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg; // Use specific error from our API if available
+          console.error("API Error Response:", errorData); // Log the structured error
         } catch (e) {
-          // If response.json() fails, the error body wasn't JSON
-          console.warn("Failed to parse error response as JSON. Status:", response.status);
+           // If response.json() fails, the error body wasn't JSON
+           console.warn("Failed to parse error response as JSON. Status:", response.status);
+           let textResponse = '';
            try {
                 // Attempt to read the response as text to see if it's HTML or something else
-                const textResponse = await response.text();
+                textResponse = await response.text();
                 console.error("Non-JSON error response body:", textResponse);
-                // You might want to display a generic error or part of the textResponse if appropriate
-                // errorMsg = `Server error: ${response.status}`; // Keep it simple for the user
+                // Display a generic error or part of the textResponse if appropriate
+                errorMsg = `Server error (${response.status}): Could not retrieve details. Check server logs.`;
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
+                errorMsg = `Server error (${response.status}): Could not read response body.`;
             }
+            // Display a toast with the non-JSON error details
+            toast({
+                variant: "destructive",
+                title: "Chatbot Communication Error",
+                description: errorMsg,
+            });
         }
-        console.error("API Call Failed:", errorMsg);
-        // Display error in chat and toast
+        console.error("API Call Failed:", errorMsg); // Log the final determined error message
+
+        // Display error in chat and potentially a toast if not already shown
+         if (!response.headers.get('content-type')?.includes('application/json')) {
+             // Show toast only if we didn't parse a JSON error earlier
+               toast({
+                    variant: "destructive",
+                    title: "Chatbot Error",
+                    description: errorMsg,
+                });
+         }
+
         const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
           content: `Failed to get response: ${errorMsg}`
         };
         setMessages(prev => [...prev, errorChatMsg]);
-        toast({
-            variant: "destructive",
-            title: "Chatbot Error",
-            description: errorMsg,
-        });
         // No need to throw here, handled by adding error message
 
       } else {
@@ -171,27 +195,25 @@ export default function BalanceBotPage() {
                 <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role !== 'user' && (
                         <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
-                           {/* Use AvatarImage for the logo */}
                            <AvatarImage
                              src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
                              alt="BalanceBot Logo"
-                             className="object-cover" // Ensure image covers the avatar area
+                             className="object-cover"
                            />
-                           {/* Fallback if image fails */}
                            <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
                         </Avatar>
                     )}
-                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words whitespace-pre-wrap ${ // Added whitespace-pre-wrap
+                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words whitespace-pre-wrap ${
                         msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-br-none'
                             : msg.role === 'error'
                             ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
                             : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
                         }`}
-                    >
-                    {/* Basic rendering of content, potential markdown could be handled here */}
-                    {msg.content}
-                    </div>
+                        // Render bold markdown using dangerouslySetInnerHTML
+                       dangerouslySetInnerHTML={renderMarkdownBold(msg.content)}
+                    />
+
                     {msg.role === 'user' && (
                         <Avatar className="h-8 w-8 border">
                             <AvatarFallback>U</AvatarFallback> {/* Placeholder for User */}
