@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Added Avatar
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added AvatarImage
 import { useToast } from "@/hooks/use-toast"; // Import useToast
+import Image from 'next/image'; // Import Image
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -76,7 +77,15 @@ export default function BalanceBotPage() {
         } catch (e) {
           // If response.json() fails, the error body wasn't JSON
           console.warn("Failed to parse error response as JSON. Status:", response.status);
-          // Keep the default HTTP error message
+           try {
+                // Attempt to read the response as text to see if it's HTML or something else
+                const textResponse = await response.text();
+                console.error("Non-JSON error response body:", textResponse);
+                // You might want to display a generic error or part of the textResponse if appropriate
+                // errorMsg = `Server error: ${response.status}`; // Keep it simple for the user
+            } catch (textError) {
+                console.error("Failed to read error response body as text:", textError);
+            }
         }
         console.error("API Call Failed:", errorMsg);
         // Display error in chat and toast
@@ -162,11 +171,17 @@ export default function BalanceBotPage() {
                 <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role !== 'user' && (
                         <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
-                            {/* Simple 'BB' for BalanceBot */}
-                            <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
+                           {/* Use AvatarImage for the logo */}
+                           <AvatarImage
+                             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+                             alt="BalanceBot Logo"
+                             className="object-cover" // Ensure image covers the avatar area
+                           />
+                           {/* Fallback if image fails */}
+                           <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
                         </Avatar>
                     )}
-                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
+                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words whitespace-pre-wrap ${ // Added whitespace-pre-wrap
                         msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-br-none'
                             : msg.role === 'error'
@@ -174,6 +189,7 @@ export default function BalanceBotPage() {
                             : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
                         }`}
                     >
+                    {/* Basic rendering of content, potential markdown could be handled here */}
                     {msg.content}
                     </div>
                     {msg.role === 'user' && (
@@ -186,6 +202,11 @@ export default function BalanceBotPage() {
                 {isLoading && (
                 <div className="flex justify-start items-start gap-3 mb-3">
                         <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
+                            <AvatarImage
+                             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+                             alt="BalanceBot Logo Typing"
+                             className="object-cover"
+                           />
                             <AvatarFallback>BB</AvatarFallback>
                         </Avatar>
                     <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
