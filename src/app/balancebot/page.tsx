@@ -18,11 +18,13 @@ interface ChatMessage {
   content: string;
 }
 
-// Simple function to convert **bold** markdown to <strong> tags
-const renderMarkdownBold = (text: string) => {
+// Simple function to convert **bold** markdown to <strong> tags and ### to <h3>
+const renderMarkdown = (text: string): { __html: string } => {
+  let html = text;
+  // Replace ### Heading with <h3>Heading</h3>
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   // Replace **text** with <strong>text</strong>
-  // Use a non-greedy match .*? to handle multiple bold sections correctly
-  const html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   return { __html: html }; // Return object for dangerouslySetInnerHTML
 };
 
@@ -32,16 +34,19 @@ export default function BalanceBotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref for the scrollable chat area content
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null); // Ref for the ScrollArea viewport
   const { toast } = useToast(); // Initialize toast
 
   // Function to scroll to the bottom of the chat messages
   const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
+    if (scrollAreaViewportRef.current) {
       // Use setTimeout to ensure scrolling happens after the DOM updates
       setTimeout(() => {
-        if(scrollAreaRef.current){
-             scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        if(scrollAreaViewportRef.current){
+            const viewport = scrollAreaViewportRef.current.firstChild as HTMLDivElement;
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight;
+            }
         }
       }, 0);
     }
@@ -67,6 +72,7 @@ export default function BalanceBotPage() {
     setInput(''); // Clear input field
 
     try {
+      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI }); // Log payload
       // Call the API endpoint
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -77,58 +83,54 @@ export default function BalanceBotPage() {
         body: JSON.stringify({ message: trimmedInput, history: historyForAPI }),
       });
 
+      console.log(`Received response status from /api/chat: ${response.status}`); // Log status
+
       // Check if the response is okay (status code 200-299)
       if (!response.ok) {
         let errorMsg = `Error: ${response.status} ${response.statusText}`; // Default error message
+        let errorData: { error?: string } | null = null;
         try {
           // Attempt to parse the JSON error response *from our API route*
-          const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg; // Use specific error from our API if available
-          console.error("API Error Response:", errorData); // Log the structured error
+          errorData = await response.json();
+          errorMsg = errorData?.error || errorMsg; // Use specific error from our API if available
+          console.error("API Error Response (Parsed JSON):", errorData); // Log the structured error
         } catch (e) {
            // If response.json() fails, the error body wasn't JSON
            console.warn("Failed to parse error response as JSON. Status:", response.status);
-           let textResponse = '';
            try {
                 // Attempt to read the response as text to see if it's HTML or something else
-                textResponse = await response.text();
+                const textResponse = await response.text(); // Note: This consumes the body again if json() failed early
                 console.error("Non-JSON error response body:", textResponse);
                 // Display a generic error or part of the textResponse if appropriate
-                errorMsg = `Server error (${response.status}): Could not retrieve details. Check server logs.`;
+                // Avoid showing potentially large HTML responses directly to the user
+                 errorMsg = `Server error (${response.status}): Could not retrieve details. Check server logs.`;
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
                 errorMsg = `Server error (${response.status}): Could not read response body.`;
             }
-            // Display a toast with the non-JSON error details
-            toast({
-                variant: "destructive",
-                title: "Chatbot Communication Error",
-                description: errorMsg,
-            });
         }
-        console.error("API Call Failed:", errorMsg); // Log the final determined error message
+        console.error("API Call Failed (Frontend):", errorMsg); // Log the final determined error message
 
-        // Display error in chat and potentially a toast if not already shown
-         if (!response.headers.get('content-type')?.includes('application/json')) {
-             // Show toast only if we didn't parse a JSON error earlier
-               toast({
-                    variant: "destructive",
-                    title: "Chatbot Error",
-                    description: errorMsg,
-                });
-         }
-
+        // Display error in chat
         const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
           content: `Failed to get response: ${errorMsg}`
         };
         setMessages(prev => [...prev, errorChatMsg]);
+
+        // Show toast for user feedback
+        toast({
+            variant: "destructive",
+            title: "Chatbot Error",
+            description: errorMsg, // Show the detailed error in the toast
+        });
         // No need to throw here, handled by adding error message
 
       } else {
         // Parse the JSON response from the API (if response.ok)
         const data = await response.json();
+        console.log("API Success Response:", data); // Log success data
 
         // Check if the response contains the expected 'response' field
         if (data.response) {
@@ -137,27 +139,29 @@ export default function BalanceBotPage() {
         } else {
           // Handle cases where the API response structure is unexpected (but status was ok)
           console.error("Unexpected successful API response structure:", data);
+          const errorMsgContent = 'Received an unexpected response from the assistant.';
           const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
-            content: 'Received an unexpected response from the assistant.'
+            content: errorMsgContent
           };
           setMessages(prev => [...prev, errorMsg]);
            toast({
                 variant: "destructive",
                 title: "Chatbot Error",
-                description: "Received an unexpected response format.",
+                description: errorMsgContent,
             });
         }
       }
 
     } catch (error: any) {
        // Catch network errors or other exceptions during fetch/processing
-       console.error("Error sending chat message:", error);
+       console.error("Error sending chat message (Network/Fetch):", error);
+       const errorMsgContent = `Sorry, failed to send message. ${error.message || 'Please check your connection.'}`;
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
-            content: `Sorry, failed to send message. ${error.message || 'Please check your connection.'}` // Include error message
+            content: errorMsgContent
         };
        setMessages(prev => [...prev, errorMsg]);
         toast({
@@ -185,9 +189,9 @@ export default function BalanceBotPage() {
         </CardHeader>
         <CardContent className="space-y-4">
            {/* Chat Area */}
-          <ScrollArea className="h-96 w-full rounded-md border p-4" >
-             {/* We need a div inside ScrollArea to correctly get scrollHeight */}
-            <div ref={scrollAreaRef} className="space-y-3">
+          <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
+            {/* Content automatically rendered within ScrollArea's viewport */}
+            <div className="space-y-3">
                 {messages.length === 0 && (
                 <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
                 )}
@@ -203,15 +207,17 @@ export default function BalanceBotPage() {
                            <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
                         </Avatar>
                     )}
-                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words whitespace-pre-wrap ${
+                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
                         msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-br-none'
                             : msg.role === 'error'
                             ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
                             : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
                         }`}
-                        // Render bold markdown using dangerouslySetInnerHTML
-                       dangerouslySetInnerHTML={renderMarkdownBold(msg.content)}
+                        // Render markdown using dangerouslySetInnerHTML
+                       dangerouslySetInnerHTML={renderMarkdown(msg.content)}
+                       // Apply prose styles for better markdown rendering if needed
+                       // className="prose prose-sm dark:prose-invert"
                     />
 
                     {msg.role === 'user' && (

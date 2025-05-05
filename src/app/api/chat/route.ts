@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     const apiKey = process.env.AIMLAPI_KEY;
     if (!apiKey) {
       console.error("API Route Error: Missing AIMLAPI_KEY environment variable.");
+      // Return a clear error message to the client
       return NextResponse.json({ error: "Server configuration error: API key missing." }, { status: 500 });
     }
 
@@ -52,25 +53,29 @@ export async function POST(req: Request) {
     console.log(`Received response status from AI/ML API: ${response.status}`); // Log status
 
     if (!response.ok) {
-      // Attempt to parse error details from the API response
-      let errorDetails = `AI/ML API HTTP error! status: ${response.status}`;
+      // Improved error handling for upstream API errors
+      let errorDetails = `AI/ML API Error (${response.status} ${response.statusText})`;
       let errorBodyText = '';
       try {
         errorBodyText = await response.text(); // Get raw response body as text first
         console.log("Raw error response body from AI/ML API:", errorBodyText); // Log raw error body
         try {
             const errorBodyJson = JSON.parse(errorBodyText); // Try parsing as JSON
-            errorDetails += ` - Details: ${JSON.stringify(errorBodyJson)}`;
+            // Use specific error message from API if available, otherwise stringify the JSON
+            const apiErrorMessage = errorBodyJson?.error?.message || errorBodyJson?.error || JSON.stringify(errorBodyJson);
+            errorDetails += `: ${apiErrorMessage}`;
         } catch (jsonParseError) {
-            errorDetails += ` - Body: ${errorBodyText}`; // Append raw text if not JSON
+            // If parsing fails, append the raw text body (truncated if too long)
+            errorDetails += `: ${errorBodyText.substring(0, 500)}${errorBodyText.length > 500 ? '...' : ''}`;
             console.warn("AI/ML API error response body was not valid JSON:", jsonParseError);
         }
       } catch (textError) {
         console.error("Failed to read error response body as text:", textError);
+        errorDetails += " (Failed to read error body)";
       }
-      console.error("AI/ML API Error Full Details:", errorDetails);
-      // IMPORTANT: Return a JSON error response to the client
-      return NextResponse.json({ error: "Failed to get response from AI service. Check server logs for details." }, { status: response.status });
+      console.error("Detailed AI/ML API Error:", errorDetails);
+      // IMPORTANT: Return a JSON error response to the client with the details
+      return NextResponse.json({ error: errorDetails }, { status: response.status });
     }
 
     const data = await response.json();
@@ -91,11 +96,12 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Error caught in /api/chat route:", error);
      // IMPORTANT: Return a JSON error response
-    // Check if it's a JSON parsing error from the request
+    // Check if it's a JSON parsing error from the *request*
     if (error instanceof SyntaxError && error.message.includes('JSON')) {
         console.error("API Route Error: Failed to parse request body as JSON.");
         return NextResponse.json({ error: "Invalid request format." }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error. Check server logs." }, { status: 500 });
+    // General internal server error
+    return NextResponse.json({ error: `Internal server error: ${error.message || 'Check server logs.'}` }, { status: 500 });
   }
 }
