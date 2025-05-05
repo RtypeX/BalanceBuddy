@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Added Avatar
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -21,6 +22,7 @@ export default function BalanceBotPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref for the scrollable chat area content
+  const { toast } = useToast(); // Initialize toast
 
   // Function to scroll to the bottom of the chat messages
   const scrollToBottom = () => {
@@ -45,15 +47,17 @@ export default function BalanceBotPage() {
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: trimmedInput };
     // Prepare chat history in the format the new API expects (role and content)
-    const historyForAPI = messages.map(msg => ({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content }));
+    const historyForAPI = messages
+        .filter(msg => msg.role !== 'error') // Exclude error messages from history
+        .map(msg => ({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content }));
 
     setMessages(prev => [...prev, userMsg]); // Add user message to UI immediately
     setIsLoading(true);
     setInput(''); // Clear input field
 
     try {
-      // Call the new API endpoint
-      const response = await fetch('/api/chat', { // Updated endpoint
+      // Call the API endpoint
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,44 +68,70 @@ export default function BalanceBotPage() {
 
       // Check if the response is okay (status code 200-299)
       if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
+        let errorMsg = `Error: ${response.status} ${response.statusText}`; // Default error message
         try {
+          // Attempt to parse the JSON error response *from our API route*
           const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg; // Use specific error from API if available
+          errorMsg = errorData.error || errorMsg; // Use specific error from our API if available
         } catch (e) {
-          // Ignore if error response is not JSON
+          // If response.json() fails, the error body wasn't JSON
+          console.warn("Failed to parse error response as JSON. Status:", response.status);
+          // Keep the default HTTP error message
         }
-        console.error("API Error:", errorMsg);
-        throw new Error(errorMsg); // Throw an error to be caught below
-      }
-
-      // Parse the JSON response from the API
-      const data = await response.json();
-
-      // Check if the response contains the expected 'response' field
-      if (data.response) {
-        const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
-        setMessages(prev => [...prev, assistantMsg]); // Add assistant message to UI
-      } else {
-        // Handle cases where the API response structure is unexpected
-        console.error("Unexpected API response:", data);
-        const errorMsg: ChatMessage = {
+        console.error("API Call Failed:", errorMsg);
+        // Display error in chat and toast
+        const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
-          content: 'Received an unexpected response from the assistant.'
+          content: `Failed to get response: ${errorMsg}`
         };
-        setMessages(prev => [...prev, errorMsg]);
+        setMessages(prev => [...prev, errorChatMsg]);
+        toast({
+            variant: "destructive",
+            title: "Chatbot Error",
+            description: errorMsg,
+        });
+        // No need to throw here, handled by adding error message
+
+      } else {
+        // Parse the JSON response from the API (if response.ok)
+        const data = await response.json();
+
+        // Check if the response contains the expected 'response' field
+        if (data.response) {
+          const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
+          setMessages(prev => [...prev, assistantMsg]); // Add assistant message to UI
+        } else {
+          // Handle cases where the API response structure is unexpected (but status was ok)
+          console.error("Unexpected successful API response structure:", data);
+          const errorMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'error',
+            content: 'Received an unexpected response from the assistant.'
+          };
+          setMessages(prev => [...prev, errorMsg]);
+           toast({
+                variant: "destructive",
+                title: "Chatbot Error",
+                description: "Received an unexpected response format.",
+            });
+        }
       }
 
     } catch (error: any) {
-       // Catch errors from the fetch call or the response handling
-       console.error("Error calling chat API:", error);
+       // Catch network errors or other exceptions during fetch/processing
+       console.error("Error sending chat message:", error);
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
-            content: `Sorry, failed to get response. ${error.message || ''}` // Include error message if available
+            content: `Sorry, failed to send message. ${error.message || 'Please check your connection.'}` // Include error message
         };
        setMessages(prev => [...prev, errorMsg]);
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: error.message || "Could not connect to the chatbot service.",
+        });
     } finally {
       setIsLoading(false); // Ensure loading state is turned off
     }
@@ -132,7 +162,8 @@ export default function BalanceBotPage() {
                 <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role !== 'user' && (
                         <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
-                            <AvatarFallback>BB</AvatarFallback>
+                            {/* Simple 'BB' for BalanceBot */}
+                            <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
                         </Avatar>
                     )}
                     <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
