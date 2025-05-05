@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -35,10 +36,37 @@ interface DailyLog {
   meals: Meal[];
 }
 
+type FitnessGoal = 'Lose Weight' | 'Gain Weight' | 'Maintain';
+
+interface DailyGoals {
+    calories: number;
+    protein: number; // grams
+    carbs: number;   // grams
+    fat: number;      // grams
+}
+
+// Base goals (adjust these as needed)
+const BASE_GOALS: DailyGoals = {
+    calories: 2000,
+    protein: 150,
+    carbs: 250,
+    fat: 65
+};
+
+// Goal adjustments
+const GOAL_ADJUSTMENTS: Record<FitnessGoal, Partial<DailyGoals>> = {
+    'Lose Weight': { calories: BASE_GOALS.calories - 300 }, // Example: 300 calorie deficit
+    'Gain Weight': { calories: BASE_GOALS.calories + 300 }, // Example: 300 calorie surplus
+    'Maintain': {} // No adjustment needed
+};
+
+
 // Local Storage Helpers
 const STORAGE_KEY = 'nutritionLog';
+const PROFILE_STORAGE_KEY = 'profileData';
 
 const getStoredNutritionLog = (): Record<string, DailyLog> => {
+  if (typeof window === 'undefined') return {}; // Avoid localStorage errors during SSR
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : {};
@@ -49,22 +77,34 @@ const getStoredNutritionLog = (): Record<string, DailyLog> => {
 };
 
 const saveStoredNutritionLog = (log: Record<string, DailyLog>) => {
+   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
 };
 
-// --- Daily Goals ---
-// TODO: Allow users to set these goals, possibly fetch from profile
-const DAILY_GOALS = {
-    calories: 2000,
-    protein: 150, // grams
-    carbs: 250,   // grams
-    fat: 65      // grams
+// Helper to get fitness goal
+const getStoredFitnessGoal = (): FitnessGoal => {
+   if (typeof window === 'undefined') return 'Maintain';
+    try {
+        const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (storedProfile) {
+            const profileData = JSON.parse(storedProfile);
+            const goal = profileData.fitnessGoal;
+            if (goal === 'Lose Weight' || goal === 'Gain Weight' || goal === 'Maintain') {
+                return goal;
+            }
+        }
+    } catch (error) {
+        console.error("Error reading fitness goal from localStorage:", error);
+    }
+    return 'Maintain'; // Default goal
 };
+
 
 const NutritionTracker: React.FC = () => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [allLogs, setAllLogs] = useState<Record<string, DailyLog>>(getStoredNutritionLog());
+  const [allLogs, setAllLogs] = useState<Record<string, DailyLog>>({});
+  const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal>('Maintain');
 
   // Form state
   const [mealName, setMealName] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'>('Breakfast');
@@ -73,6 +113,21 @@ const NutritionTracker: React.FC = () => {
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
+
+   // Load logs and fitness goal on mount
+   useEffect(() => {
+        setAllLogs(getStoredNutritionLog());
+        setFitnessGoal(getStoredFitnessGoal());
+    }, []);
+
+  // Calculate daily goals based on fitness goal
+  const DAILY_GOALS = useMemo(() => {
+      const adjustments = GOAL_ADJUSTMENTS[fitnessGoal];
+      return {
+          ...BASE_GOALS,
+          ...adjustments // Apply adjustments (e.g., modify calories)
+      };
+  }, [fitnessGoal]);
 
   // Get log for the selected date
   const selectedDateString = selectedDate ? format(startOfDay(selectedDate), 'yyyy-MM-dd') : '';
@@ -175,13 +230,15 @@ const NutritionTracker: React.FC = () => {
     return totals;
   }, [currentDayLog]);
 
-  // Calculate progress percentages
+  // Calculate progress percentages using the dynamically set DAILY_GOALS
   const progressPercentages = useMemo(() => ({
       calories: DAILY_GOALS.calories > 0 ? Math.min((dailyTotals.calories / DAILY_GOALS.calories) * 100, 100) : 0,
       protein: DAILY_GOALS.protein > 0 ? Math.min((dailyTotals.protein / DAILY_GOALS.protein) * 100, 100) : 0,
       carbs: DAILY_GOALS.carbs > 0 ? Math.min((dailyTotals.carbs / DAILY_GOALS.carbs) * 100, 100) : 0,
       fat: DAILY_GOALS.fat > 0 ? Math.min((dailyTotals.fat / DAILY_GOALS.fat) * 100, 100) : 0,
-  }), [dailyTotals]);
+  }), [dailyTotals, DAILY_GOALS]);
+
+  const goalDescription = `Based on your goal to '${fitnessGoal}'. Goals: Calories: ${DAILY_GOALS.calories}kcal, Protein: ${DAILY_GOALS.protein}g, Carbs: ${DAILY_GOALS.carbs}g, Fat: ${DAILY_GOALS.fat}g`;
 
 
   return (
@@ -265,7 +322,8 @@ const NutritionTracker: React.FC = () => {
                <Card className="bg-muted/50">
                    <CardHeader className="pb-2">
                        <CardTitle className="text-lg">Daily Progress</CardTitle>
-                       <CardDescription>Towards default goals (Calories: {DAILY_GOALS.calories}kcal, Protein: {DAILY_GOALS.protein}g, Carbs: {DAILY_GOALS.carbs}g, Fat: {DAILY_GOALS.fat}g)</CardDescription>
+                       {/* Display the dynamically calculated goals */}
+                       <CardDescription>{goalDescription}</CardDescription>
                    </CardHeader>
                    <CardContent className="space-y-3 pt-2">
                        {/* Calories */}
@@ -349,3 +407,5 @@ const NutritionTracker: React.FC = () => {
 };
 
 export default NutritionTracker;
+    
+    
