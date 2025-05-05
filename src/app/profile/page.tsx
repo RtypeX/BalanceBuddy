@@ -6,16 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ModeToggle";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select imports
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from 'next/navigation'; // Added useRouter
+import { useRouter } from 'next/navigation';
 
-// Define the structure for profile data
+// Define the structure for profile data with updated units
 interface ProfileData {
   name: string;
   age: number;
-  height: number;
-  weight: number;
+  heightFt: number; // Height in feet
+  heightIn: number; // Height in inches
+  weightLbs: number; // Weight in pounds
   email: string;
   fitnessGoal: 'Lose Weight' | 'Gain Weight' | 'Maintain';
 }
@@ -24,12 +25,13 @@ const ProfilePage = () => {
   const router = useRouter(); // Initialize router
   const { toast } = useToast(); // Initialize toast
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: '', // Initialize with empty strings or default values
+    name: '',
     age: 0,
-    height: 0,
-    weight: 0,
+    heightFt: 0,
+    heightIn: 0,
+    weightLbs: 0,
     email: '',
-    fitnessGoal: 'Maintain', // Default goal
+    fitnessGoal: 'Maintain',
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -45,13 +47,14 @@ const ProfilePage = () => {
     if (storedProfileData) {
       try {
         const parsedData = JSON.parse(storedProfileData);
-        // Ensure all fields exist, provide defaults if not
+        // Validate and migrate old data structure if necessary (simple validation here)
         const validatedData: ProfileData = {
           name: parsedData.name || '',
           age: parseInt(parsedData.age, 10) || 0,
-          height: parseInt(parsedData.height, 10) || 0,
-          weight: parseInt(parsedData.weight, 10) || 0,
-          email: parsedData.email || (storedUser ? JSON.parse(storedUser).email : ''), // Fallback to user email
+          heightFt: parseInt(parsedData.heightFt, 10) || (parsedData.height ? Math.floor(parsedData.height / 30.48) : 0), // Basic cm to ft conversion fallback
+          heightIn: parseInt(parsedData.heightIn, 10) || (parsedData.height ? Math.round((parsedData.height / 2.54) % 12) : 0), // Basic cm to inches conversion fallback
+          weightLbs: parseFloat(parsedData.weightLbs) || (parsedData.weight ? Math.round(parsedData.weight * 2.20462) : 0), // Basic kg to lbs conversion fallback
+          email: parsedData.email || (storedUser ? JSON.parse(storedUser).email : ''),
           fitnessGoal: parsedData.fitnessGoal || 'Maintain',
         };
         setProfileData(validatedData);
@@ -65,14 +68,14 @@ const ProfilePage = () => {
         });
         // Initialize with defaults if parsing fails
         const defaultEmail = storedUser ? JSON.parse(storedUser).email : '';
-        const defaultData: ProfileData = { name: '', age: 0, height: 0, weight: 0, email: defaultEmail, fitnessGoal: 'Maintain' };
+        const defaultData: ProfileData = { name: '', age: 0, heightFt: 0, heightIn: 0, weightLbs: 0, email: defaultEmail, fitnessGoal: 'Maintain' };
         setProfileData(defaultData);
         setTempProfileData(defaultData);
       }
     } else if (storedUser) {
         // If no profile data, try initializing with user email
         const user = JSON.parse(storedUser);
-        const initialData: ProfileData = { name: '', age: 0, height: 0, weight: 0, email: user.email, fitnessGoal: 'Maintain' };
+        const initialData: ProfileData = { name: '', age: 0, heightFt: 0, heightIn: 0, weightLbs: 0, email: user.email, fitnessGoal: 'Maintain' };
         setProfileData(initialData);
         setTempProfileData(initialData);
         localStorage.setItem('profileData', JSON.stringify(initialData)); // Save initial data
@@ -83,12 +86,20 @@ const ProfilePage = () => {
   // Handle input changes during editing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setTempProfileData(prev => ({
-        ...prev,
-        // Convert age, height, weight to numbers, default to 0 if invalid
-        [name]: (name === 'age' || name === 'height' || name === 'weight') ? (parseInt(value, 10) || 0) : value
-    }));
+    setTempProfileData(prev => {
+        let numericValue: number | string = value;
+        // Convert specific fields to numbers, default to 0 if invalid
+        if (['age', 'heightFt', 'heightIn', 'weightLbs'].includes(name)) {
+            numericValue = name === 'weightLbs' ? (parseFloat(value) || 0) : (parseInt(value, 10) || 0);
+            if (numericValue < 0) numericValue = 0; // Ensure non-negative values
+        }
+        return {
+            ...prev,
+            [name]: numericValue
+        };
+    });
   };
+
 
   // Handle fitness goal selection change
   const handleGoalChange = (value: string) => {
@@ -100,6 +111,16 @@ const ProfilePage = () => {
 
   // Save the changes made in the temporary state
   const handleSave = () => {
+    // Simple validation for height inches
+    if (tempProfileData.heightIn >= 12) {
+        toast({
+            variant: "destructive",
+            title: "Invalid Height",
+            description: "Inches should be less than 12.",
+        });
+        return; // Prevent saving invalid height
+    }
+
     setProfileData({ ...tempProfileData });
     localStorage.setItem('profileData', JSON.stringify(tempProfileData)); // Save updated data to localStorage
     setIsEditing(false);
@@ -121,6 +142,12 @@ const ProfilePage = () => {
              <p>Loading profile...</p>
            </div>
       );
+  }
+
+  // Helper to display height
+  const displayHeight = (ft: number, inches: number): string => {
+      if (ft <= 0 && inches <= 0) return 'Not set';
+      return `${ft} ft ${inches} in`;
   }
 
   return (
@@ -162,29 +189,51 @@ const ProfilePage = () => {
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="height">Height (cm)</Label>
-                <Input
-                  type="number"
-                  id="height"
-                  name="height"
-                  value={tempProfileData.height === 0 ? '' : tempProfileData.height} // Show empty if 0
-                  onChange={handleInputChange}
-                  placeholder="Your Height"
-                   min="0"
-                  className="mt-1"
-                />
+              {/* Height Input */}
+              <div className="space-y-2">
+                <Label>Height</Label>
+                <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label htmlFor="heightFt" className="text-xs text-muted-foreground">Feet</Label>
+                      <Input
+                        type="number"
+                        id="heightFt"
+                        name="heightFt"
+                        value={tempProfileData.heightFt === 0 ? '' : tempProfileData.heightFt}
+                        onChange={handleInputChange}
+                        placeholder="ft"
+                        min="0"
+                        className="mt-1"
+                      />
+                    </div>
+                     <div className="flex-1">
+                       <Label htmlFor="heightIn" className="text-xs text-muted-foreground">Inches</Label>
+                        <Input
+                            type="number"
+                            id="heightIn"
+                            name="heightIn"
+                            value={tempProfileData.heightIn === 0 ? '' : tempProfileData.heightIn}
+                            onChange={handleInputChange}
+                            placeholder="in"
+                            min="0"
+                            max="11" // Inches < 12
+                            className="mt-1"
+                        />
+                    </div>
+                </div>
               </div>
+              {/* Weight Input */}
               <div>
-                <Label htmlFor="weight">Weight (kg)</Label>
+                <Label htmlFor="weightLbs">Weight (lbs)</Label>
                 <Input
                   type="number"
-                  id="weight"
-                  name="weight"
-                  value={tempProfileData.weight === 0 ? '' : tempProfileData.weight} // Show empty if 0
+                  id="weightLbs"
+                  name="weightLbs"
+                  value={tempProfileData.weightLbs === 0 ? '' : tempProfileData.weightLbs}
                   onChange={handleInputChange}
-                  placeholder="Your Weight"
+                  placeholder="Your Weight in lbs"
                   min="0"
+                  step="0.1" // Allow decimal for lbs
                   className="mt-1"
                 />
               </div>
@@ -225,8 +274,8 @@ const ProfilePage = () => {
               {/* Display Profile Information */}
               <p><span className="font-semibold">Name:</span> {profileData.name || 'Not set'}</p>
               <p><span className="font-semibold">Age:</span> {profileData.age > 0 ? profileData.age : 'Not set'}</p>
-              <p><span className="font-semibold">Height:</span> {profileData.height > 0 ? `${profileData.height} cm` : 'Not set'}</p>
-              <p><span className="font-semibold">Weight:</span> {profileData.weight > 0 ? `${profileData.weight} kg` : 'Not set'}</p>
+              <p><span className="font-semibold">Height:</span> {displayHeight(profileData.heightFt, profileData.heightIn)}</p>
+              <p><span className="font-semibold">Weight:</span> {profileData.weightLbs > 0 ? `${profileData.weightLbs.toFixed(1)} lbs` : 'Not set'}</p>
               <p><span className="font-semibold">Email:</span> {profileData.email || 'Not set'}</p>
               <p><span className="font-semibold">Fitness Goal:</span> {profileData.fitnessGoal}</p>
               <div className="flex justify-between items-center pt-4">
