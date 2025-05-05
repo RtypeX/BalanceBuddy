@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { generateResponse } from '@/ai/flows/generate-response'; // Updated import
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -9,9 +8,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Added Avatar
 
+// Define the structure for a chat message
 interface ChatMessage {
-  id: string; // Added for unique key prop
-  role: 'user' | 'bot' | 'error';
+  id: string;
+  role: 'user' | 'assistant' | 'error'; // Role can be user, bot (assistant), or error
   content: string;
 }
 
@@ -20,53 +20,90 @@ export default function BalanceBotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref for the scrollable chat area content
 
-  // Scroll to bottom when messages change
+  // Function to scroll to the bottom of the chat messages
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      // Use setTimeout to ensure scrolling happens after the DOM updates
+      setTimeout(() => {
+        if(scrollAreaRef.current){
+             scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      }, 0);
+    }
+  };
+
+  // Scroll to bottom whenever messages change
   useEffect(() => {
-    // Use setTimeout to allow the DOM to update before scrolling
-    const timer = setTimeout(() => {
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-      }
-    }, 0);
-    return () => clearTimeout(timer); // Cleanup timer on unmount or dependency change
+    scrollToBottom();
   }, [messages]);
-
 
   const handleSend = async () => {
     const trimmedInput = input.trim();
-    if (!trimmedInput) return;
+    if (!trimmedInput || isLoading) return; // Prevent sending empty or duplicate messages while loading
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: trimmedInput };
-    setMessages(prev => [...prev, userMsg]);
+    // Prepare chat history in the format the new API expects (role and content)
+    const historyForAPI = messages.map(msg => ({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content }));
+
+    setMessages(prev => [...prev, userMsg]); // Add user message to UI immediately
     setIsLoading(true);
-    setInput(''); // Clear input immediately
+    setInput(''); // Clear input field
 
     try {
-      // Call the updated AI flow
-      const result = await generateResponse({ message: trimmedInput });
+      // Call the new API endpoint
+      const response = await fetch('/api/chat', { // Updated endpoint
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Send the current user message and the formatted history
+        body: JSON.stringify({ message: trimmedInput, history: historyForAPI }),
+      });
 
-      const botMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        // Check if the response indicates an error from the flow's catch block
-        role: result.response.startsWith('Sorry, I encountered an error') ? 'error' : 'bot',
-        content: result.response
-      };
-      setMessages(prev => [...prev, botMsg]);
+      // Check if the response is okay (status code 200-299)
+      if (!response.ok) {
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg; // Use specific error from API if available
+        } catch (e) {
+          // Ignore if error response is not JSON
+        }
+        console.error("API Error:", errorMsg);
+        throw new Error(errorMsg); // Throw an error to be caught below
+      }
 
-    } catch (error){
-       // This catch block might be less likely to trigger if the flow handles errors internally,
-       // but it's good practice to keep it for unexpected issues during the API call itself.
-       console.error("Error calling generateResponse:", error);
+      // Parse the JSON response from the API
+      const data = await response.json();
+
+      // Check if the response contains the expected 'response' field
+      if (data.response) {
+        const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
+        setMessages(prev => [...prev, assistantMsg]); // Add assistant message to UI
+      } else {
+        // Handle cases where the API response structure is unexpected
+        console.error("Unexpected API response:", data);
+        const errorMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'error',
+          content: 'Received an unexpected response from the assistant.'
+        };
+        setMessages(prev => [...prev, errorMsg]);
+      }
+
+    } catch (error: any) {
+       // Catch errors from the fetch call or the response handling
+       console.error("Error calling chat API:", error);
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
-            content: 'Sorry, failed to get response due to a network or unexpected error.'
+            content: `Sorry, failed to get response. ${error.message || ''}` // Include error message if available
         };
        setMessages(prev => [...prev, errorMsg]);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading state is turned off
     }
   };
 
@@ -87,15 +124,14 @@ export default function BalanceBotPage() {
            {/* Chat Area */}
           <ScrollArea className="h-96 w-full rounded-md border p-4" >
              {/* We need a div inside ScrollArea to correctly get scrollHeight */}
-            <div ref={scrollAreaRef}>
+            <div ref={scrollAreaRef} className="space-y-3">
                 {messages.length === 0 && (
                 <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
                 )}
                 {messages.map((msg) => (
                 <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role !== 'user' && (
-                        <Avatar className="h-8 w-8 border">
-                            {/* You could potentially use a different image/icon for the bot */}
+                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
                             <AvatarFallback>BB</AvatarFallback>
                         </Avatar>
                     )}
@@ -118,7 +154,7 @@ export default function BalanceBotPage() {
                 ))}
                 {isLoading && (
                 <div className="flex justify-start items-start gap-3 mb-3">
-                        <Avatar className="h-8 w-8 border">
+                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
                             <AvatarFallback>BB</AvatarFallback>
                         </Avatar>
                     <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
