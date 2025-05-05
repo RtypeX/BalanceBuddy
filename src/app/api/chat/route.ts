@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 
 const AIMLAPI_URL = "https://api.aimlapi.com/v1/chat/completions";
 const MODEL_NAME = "gpt-4o-mini"; // Or "gpt-4o-mini-2024-07-18"
+const MAX_TOKENS_LIMIT = 200; // Set a reasonable token limit
 
 export async function POST(req: Request) {
   try {
@@ -34,9 +35,9 @@ export async function POST(req: Request) {
     const requestBody = {
         model: MODEL_NAME,
         messages: messages,
+        max_tokens: MAX_TOKENS_LIMIT, // Add the max_tokens limit
         // Add other optional parameters from AI/ML API docs if needed
         // temperature: 0.7,
-        // max_tokens: 150,
       };
 
     console.log("Sending request to AI/ML API with body:", JSON.stringify(requestBody, null, 2)); // Log request body
