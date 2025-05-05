@@ -14,7 +14,7 @@ import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
-import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight } from 'lucide-react'; // Added Bot icon
+import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight, Utensils } from 'lucide-react'; // Added Bot, Calendar, Weight, Utensils icons
 
 export default function Home() {
   const router = useRouter();
@@ -37,6 +37,7 @@ export default function Home() {
     localStorage.removeItem('weightLog'); // Clear weight log
     localStorage.removeItem('weightGoal'); // Clear weight goal
     localStorage.removeItem('startWeight'); // Clear start weight
+    localStorage.removeItem('nutritionLog'); // Clear nutrition log
     router.push('/'); // Redirect to login/start screen
   };
 
@@ -150,6 +151,18 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground mb-3">Log your weight and track progress.</p>
                 <Button variant="outline" onClick={() => router.push('/weight-tracker')} className="w-full">
                   Track Weight
+                </Button>
+              </CardContent>
+            </Card>
+
+           {/* Nutrition Tracker Card */}
+          <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
+              <CardContent className="p-4 flex flex-col items-center text-center">
+               <Utensils className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
+                <h2 className="text-lg font-semibold mb-1">Nutrition Tracker</h2>
+                <p className="text-sm text-muted-foreground mb-3">Log your meals and track macros.</p>
+                <Button variant="outline" onClick={() => router.push('/nutrition-tracker')} className="w-full">
+                  Track Nutrition
                 </Button>
               </CardContent>
             </Card>
