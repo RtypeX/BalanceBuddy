@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -186,7 +187,7 @@ export default function BalanceBotPage() {
     const existingChat = currentChatId ? savedChats.find(c => c.id === currentChatId) : null;
     let chatNameToSave = existingChat?.name;
 
-    if (!chatNameToSave) { // Prompt for name if it's a new save
+    if (!chatNameToSave) { // Prompt for name if it's a new save or if chat not found (should not happen if currentChatId is valid)
         chatNameToSave = prompt("Enter a name for this chat:", `Chat - ${new Date().toLocaleDateString()}`);
         if (chatNameToSave === null) return; // User cancelled
         if (!chatNameToSave.trim()) {
@@ -204,7 +205,9 @@ export default function BalanceBotPage() {
     };
 
     let updatedSavedChats;
-    if (savedChats.some(chat => chat.id === chatData.id)) {
+    const chatIndex = savedChats.findIndex(chat => chat.id === chatData.id);
+
+    if (chatIndex > -1) {
       // Update existing chat
       updatedSavedChats = savedChats.map(chat => chat.id === chatData.id ? chatData : chat);
     } else {
@@ -576,3 +579,4 @@ export default function BalanceBotPage() {
 }
 
     
+
