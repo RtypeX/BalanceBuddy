@@ -27,6 +27,8 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // For demo purposes, simply store a dummy user.
+    // In a real app, you would authenticate against Firebase Auth.
     localStorage.setItem('user', JSON.stringify({ id: 'dummy', email: email }));
     toast({
       id: "login-success",
@@ -43,7 +45,7 @@ const Login: React.FC = () => {
         alt="BalanceBuddy Logo"
         width={150}
         height={150}
-        className="mb-8"
+        className="mb-8 rounded-full" // Added rounded-full
       />
       <h1 className="text-3xl font-bold mb-8">Login</h1>
       <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-80">
@@ -87,3 +89,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+

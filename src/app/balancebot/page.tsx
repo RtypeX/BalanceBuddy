@@ -10,9 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
-// Select components are no longer needed as we default to Gemini
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Label } from "@/components/ui/label";
 import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw } from 'lucide-react';
 
 // Define the structure for a chat message
@@ -72,8 +69,6 @@ export default function BalanceBotPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  // selectedModel is no longer needed, defaults to Gemini
-  // const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
 
   const [requestTimestamps, setRequestTimestamps] = useState<number[]>([]);
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
@@ -228,7 +223,6 @@ export default function BalanceBotPage() {
     const chatToLoad = savedChats.find(chat => chat.id === chatId);
     if (chatToLoad) {
       setMessages([...chatToLoad.messages]); // Load a copy
-      // setSelectedModel(chatToLoad.modelType); // No longer needed
       setCurrentChatId(chatToLoad.id); // Set the current chat ID
       setInput('');
       setIsLoading(false);
@@ -460,7 +454,6 @@ export default function BalanceBotPage() {
             </div>
         </CardHeader>
         <CardContent className="space-y-4">
-            {/* Model selection UI removed */}
           <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
             <div className="space-y-3">
                 {messages.length === 0 && (
@@ -470,13 +463,16 @@ export default function BalanceBotPage() {
                 <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex items-start gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                         {msg.role !== 'user' && (
-                            <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                               <AvatarImage
+                            <Avatar className="h-8 w-8 border text-primary-foreground flex items-center justify-center shrink-0">
+                               <Image
                                  src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
                                  alt="BalanceBot Logo"
-                                 className="object-cover"
+                                 width={32}
+                                 height={32}
+                                 className="rounded-full object-cover"
                                />
-                               <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
+                               {/* Fallback is handled by the Image component itself if src fails, or you can customize AvatarFallback */}
+                               {/* <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback> */}
                             </Avatar>
                         )}
                         <div className={`rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
@@ -498,13 +494,15 @@ export default function BalanceBotPage() {
                 ))}
                 {isLoading && (
                 <div className="flex justify-start items-start gap-3 mb-3">
-                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                            <AvatarImage
+                        <Avatar className="h-8 w-8 border text-primary-foreground flex items-center justify-center shrink-0">
+                            <Image
                              src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
                              alt="BalanceBot Logo Typing"
-                             className="object-cover"
+                             width={32}
+                             height={32}
+                             className="rounded-full object-cover"
                            />
-                            <AvatarFallback>BB</AvatarFallback>
+                            {/* <AvatarFallback>BB</AvatarFallback> */}
                         </Avatar>
                     <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
                         Typing...

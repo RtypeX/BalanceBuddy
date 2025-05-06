@@ -25,7 +25,7 @@ export default function StartScreen() {
         alt="BalanceBuddy Logo"
         width={200}
         height={200}
-        className="mb-8"
+        className="mb-8 rounded-full" // Added rounded-full
       />
       <h1 className="text-4xl font-bold mb-8">Welcome to BalanceBuddy</h1>
       <p className="text-lg mb-4">Find your balance.</p>
@@ -38,3 +38,4 @@ export default function StartScreen() {
     </div>
   );
 }
+
