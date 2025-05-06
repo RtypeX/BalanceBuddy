@@ -1,99 +1,91 @@
 // src/app/api/chat/route.ts
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
-const AIMLAPI_URL = "https://api.aimlapi.com/v1/chat/completions";
-const MODEL_NAME = "gpt-4o-mini"; // Or "gpt-4o-mini-2024-07-18"
-const MAX_TOKENS_LIMIT = 200; // Set a reasonable token limit for the AI's response
-const CHAT_HISTORY_CONTEXT_LIMIT = 10; // Number of recent message pairs (user + assistant) to send as context
+const GEMINI_MODEL_NAME = "gemini-1.5-flash-latest";
+const CHAT_HISTORY_CONTEXT_LIMIT = 5; // Number of recent message pairs (user + model) to send as context
+
+interface ApiChatMessage {
+  role: 'user' | 'model'; // Gemini uses 'user' and 'model'
+  parts: { text: string }[];
+}
 
 export async function POST(req: Request) {
   try {
-    const { message, history = [] } = await req.json(); // Expect message and optional history
+    const { message, history = [] } = await req.json();
 
     if (!message) {
       console.error("API Route Error: No message provided in request body.");
       return NextResponse.json({ error: "No message provided" }, { status: 400 });
     }
 
-    const apiKey = process.env.AIMLAPI_KEY;
+    const apiKey = process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
-      console.error("API Route Error: Missing AIMLAPI_KEY environment variable.");
-      // Return a clear error message to the client
+      console.error("API Route Error: Missing GOOGLE_GENAI_API_KEY environment variable.");
       return NextResponse.json({ error: "Server configuration error: API key missing." }, { status: 500 });
     }
 
-    // Take only the most recent messages from history to limit context size
-    const recentHistory = history.slice(-CHAT_HISTORY_CONTEXT_LIMIT * 2); // *2 because each exchange has a user and assistant message
-
-    // Construct messages array including system prompt, recent history, and the new user message
-    const messagesForAPI = [
-        { role: "system", content: "You are BalanceBot, a friendly and helpful fitness assistant. Keep your responses concise and well-formatted. Use markdown for emphasis (bold, italics) and headings (###) where appropriate." },
-        ...recentHistory.map((msg: { role: string; content: string }) => ({
-           role: msg.role === 'assistant' ? 'assistant' : 'user',
-           content: msg.content
-        })),
-        { role: "user", content: message }
-    ];
-
-    const requestBody = {
-        model: MODEL_NAME,
-        messages: messagesForAPI,
-        max_tokens: MAX_TOKENS_LIMIT,
-      };
-
-    console.log("Sending request to AI/ML API with body:", JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(AIMLAPI_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: GEMINI_MODEL_NAME,
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ],
+      // System instruction can be added here if needed for Gemini 1.5 models
+      // systemInstruction: "You are BalanceBot, a friendly and helpful fitness assistant..."
     });
 
-    console.log(`Received response status from AI/ML API: ${response.status}`);
+    const recentHistory = history.slice(-CHAT_HISTORY_CONTEXT_LIMIT * 2);
 
-    if (!response.ok) {
-      let errorDetails = `AI/ML API Error (${response.status} ${response.statusText})`;
-      let errorBodyText = '';
-      try {
-        errorBodyText = await response.text();
-        console.log("Raw error response body from AI/ML API:", errorBodyText);
-        try {
-            const errorBodyJson = JSON.parse(errorBodyText);
-            const apiErrorMessage = errorBodyJson?.error?.message || errorBodyJson?.error || JSON.stringify(errorBodyJson);
-            errorDetails += `: ${apiErrorMessage}`;
-        } catch (jsonParseError) {
-            errorDetails += `: ${errorBodyText.substring(0, 500)}${errorBodyText.length > 500 ? '...' : ''}`;
-            console.warn("AI/ML API error response body was not valid JSON:", jsonParseError);
-        }
-      } catch (textError) {
-        console.error("Failed to read error response body as text:", textError);
-        errorDetails += " (Failed to read error body)";
-      }
-      console.error("Detailed AI/ML API Error:", errorDetails);
-      return NextResponse.json({ error: errorDetails }, { status: response.status });
-    }
+    const formattedHistory: ApiChatMessage[] = recentHistory.map((msg: { role: string; content: string }) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    }));
+    
+    // Add the current user message to the history for the API call
+    const currentMessageForApi: ApiChatMessage = { role: 'user', parts: [{ text: message }] };
+    const messagesForAPI = [...formattedHistory, currentMessageForApi];
 
-    const data = await response.json();
-    console.log("Received successful response data from AI/ML API:", data);
 
-    const botResponse = data?.choices?.[0]?.message?.content;
+    console.log("Sending request to Gemini API with messages:", JSON.stringify(messagesForAPI, null, 2));
 
-    if (!botResponse) {
-        console.error("API Route Error: Unexpected API response structure:", data);
+    // For Gemini, a chat session is better for multi-turn conversations
+    const chat = model.startChat({
+        history: formattedHistory,
+        generationConfig: {
+            maxOutputTokens: 200, // Corresponds to max_tokens
+        },
+    });
+    
+    const result = await chat.sendMessage(message); // Send only the new message
+    const botResponseContent = result.response.text();
+
+
+    console.log("Received successful response data from Gemini API:", botResponseContent);
+
+    if (!botResponseContent) {
+        console.error("API Route Error: Unexpected API response structure from Gemini.");
         return NextResponse.json({ error: "Received invalid response format from AI service." }, { status: 500 });
     }
 
-    return NextResponse.json({ response: botResponse });
+    return NextResponse.json({ response: botResponseContent });
 
   } catch (error: any) {
-    console.error("Error caught in /api/chat route:", error);
+    console.error("Error caught in /api/chat route (Gemini):", error);
+    let errorMessage = `Internal server error: ${error.message || 'Check server logs.'}`;
+    if (error.response && error.response.data && error.response.data.error) {
+        errorMessage = `Gemini API Error: ${error.response.data.error.message}`;
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    
     if (error instanceof SyntaxError && error.message.includes('JSON')) {
         console.error("API Route Error: Failed to parse request body as JSON.");
         return NextResponse.json({ error: "Invalid request format." }, { status: 400 });
     }
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Check server logs.'}` }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
