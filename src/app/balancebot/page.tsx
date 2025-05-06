@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Trash2, Save, FilePlus2, FolderOpen } from 'lucide-react'; // Added Save, FilePlus2 and FolderOpen icons
+import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw } from 'lucide-react';
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -61,6 +61,7 @@ const MAX_REQUESTS_PER_HOUR = 10;
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 const REQUEST_TIMESTAMPS_KEY_PREFIX = 'balanceBotRequestTimestamps_';
 const SAVED_CHATS_KEY = 'balanceBotSavedChats';
+const SUBSCRIPTION_STATUS_KEY = 'balanceBotSubscriptionStatus';
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -74,6 +75,9 @@ export default function BalanceBotPage() {
   const [requestTimestamps, setRequestTimestamps] = useState<number[]>([]);
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
   const [canSendMessage, setCanSendMessage] = useState<boolean>(true);
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState<boolean>(false);
+
 
   const [savedChats, setSavedChats] = useState<SavedChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null); // Track current loaded/saved chat ID
@@ -81,8 +85,13 @@ export default function BalanceBotPage() {
 
   const getRequestTimestampsKey = () => `${REQUEST_TIMESTAMPS_KEY_PREFIX}${selectedModel}`;
 
-  // Load request timestamps and saved chats from localStorage on mount
+  // Load request timestamps, saved chats, and subscription status from localStorage on mount
   useEffect(() => {
+    const subscriptionStatus = localStorage.getItem(SUBSCRIPTION_STATUS_KEY);
+    if (subscriptionStatus === 'true') {
+      setIsSubscribed(true);
+    }
+
     const key = getRequestTimestampsKey();
     const storedTimestamps = localStorage.getItem(key);
     if (storedTimestamps) {
@@ -118,6 +127,12 @@ export default function BalanceBotPage() {
 
   // Effect to update rate limit status and message
   useEffect(() => {
+    if (isSubscribed) {
+      setCanSendMessage(true);
+      setRateLimitMessage(`Premium Subscription: Unlimited requests for ${selectedModel.toUpperCase()}.`);
+      return;
+    }
+
     const now = Date.now();
     const recentTimestamps = requestTimestamps.filter(
       (timestamp) => now - timestamp < ONE_HOUR_IN_MS
@@ -131,7 +146,7 @@ export default function BalanceBotPage() {
       const timeToWaitMs = expiryTime - now;
       const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60)));
       setRateLimitMessage(
-        `Rate limit reached for ${selectedModel.toUpperCase()}. Please try again in ~${minutesToWait} minute(s).`
+        `Rate limit reached for ${selectedModel.toUpperCase()}. Please try again in ~${minutesToWait} minute(s) or subscribe for unlimited access.`
       );
     } else {
       setCanSendMessage(true);
@@ -139,7 +154,7 @@ export default function BalanceBotPage() {
         `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining for ${selectedModel.toUpperCase()} this hour.`
       );
     }
-  }, [requestTimestamps, selectedModel]);
+  }, [requestTimestamps, selectedModel, isSubscribed]);
 
 
   const scrollToBottom = () => {
@@ -164,8 +179,6 @@ export default function BalanceBotPage() {
     setInput('');
     setIsLoading(false);
     setCurrentChatId(null); // No longer associated with a saved chat
-    // Reset selected model to default or keep current, up to preference
-    // setSelectedModel('gemini');
     toast({ title: "New Chat Started" });
   };
 
@@ -175,8 +188,10 @@ export default function BalanceBotPage() {
       return;
     }
 
-    let chatNameToSave: string | null = null;
-    if (!currentChatId) { // Only prompt for name if it's a new save
+    const existingChat = currentChatId ? savedChats.find(c => c.id === currentChatId) : null;
+    let chatNameToSave = existingChat?.name;
+
+    if (!chatNameToSave) { // Prompt for name if it's a new save or existing chat has no name (shouldn't happen if logic is correct)
         chatNameToSave = prompt("Enter a name for this chat:", `Chat - ${new Date().toLocaleDateString()}`);
         if (chatNameToSave === null) return; // User cancelled
         if (!chatNameToSave.trim()) {
@@ -185,10 +200,9 @@ export default function BalanceBotPage() {
         }
     }
 
-
     const chatData: SavedChat = {
       id: currentChatId || crypto.randomUUID(),
-      name: chatNameToSave || savedChats.find(c => c.id === currentChatId)?.name || `Chat - ${new Date().toLocaleDateString()}`,
+      name: chatNameToSave,
       messages: [...messages],
       modelType: selectedModel,
       timestamp: Date.now(),
@@ -206,7 +220,7 @@ export default function BalanceBotPage() {
 
     setSavedChats(updatedSavedChats);
     localStorage.setItem(SAVED_CHATS_KEY, JSON.stringify(updatedSavedChats));
-    setCurrentChatId(chatData.id); // Set current chat ID after saving
+    setCurrentChatId(chatData.id); // Ensure current chat ID is set/updated
     toast({ title: "Chat Saved", description: `"${chatData.name}" has been saved.` });
   };
 
@@ -237,12 +251,30 @@ export default function BalanceBotPage() {
     }
   };
 
+  const handleSubscription = () => {
+    // Simulate a payment process
+    toast({
+        title: "Redirecting to payment...",
+        description: "This is a demo. You will be 'subscribed' shortly."
+    });
+    setTimeout(() => {
+        setIsSubscribed(true);
+        localStorage.setItem(SUBSCRIPTION_STATUS_KEY, 'true');
+        setShowSubscriptionModal(false);
+        toast({
+            title: "Subscription Successful!",
+            description: "You now have unlimited access to BalanceBot.",
+        });
+    }, 2000);
+  };
+
 
   const handleSend = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading) return;
 
     if (!canSendMessage) {
+        setShowSubscriptionModal(true); // Show subscription modal if rate limited
         toast({
             variant: "destructive",
             title: "Rate Limit Exceeded",
@@ -260,12 +292,14 @@ export default function BalanceBotPage() {
     setIsLoading(true);
     setInput('');
 
-    // Update request timestamps
-    const now = Date.now();
-    const key = getRequestTimestampsKey();
-    const updatedTimestamps = [...requestTimestamps, now].filter(ts => now - ts < ONE_HOUR_IN_MS);
-    setRequestTimestamps(updatedTimestamps);
-    localStorage.setItem(key, JSON.stringify(updatedTimestamps));
+    // Update request timestamps if not subscribed
+    if (!isSubscribed) {
+        const now = Date.now();
+        const key = getRequestTimestampsKey();
+        const updatedTimestamps = [...requestTimestamps, now].filter(ts => now - ts < ONE_HOUR_IN_MS);
+        setRequestTimestamps(updatedTimestamps);
+        localStorage.setItem(key, JSON.stringify(updatedTimestamps));
+    }
 
 
     try {
@@ -431,7 +465,17 @@ export default function BalanceBotPage() {
                 <Label htmlFor="model-select">Select AI Model:</Label>
                 <Select
                     value={selectedModel}
-                    onValueChange={(value) => setSelectedModel(value as ModelType)}
+                    onValueChange={(value) => {
+                      if (messages.length > 0 && currentChatId) {
+                        toast({
+                          title: "Model Locked",
+                          description: "Cannot change model for an existing saved chat. Start a new chat to switch.",
+                          variant: "default"
+                        });
+                      } else {
+                        setSelectedModel(value as ModelType);
+                      }
+                    }}
                     disabled={isLoading || (messages.length > 0 && !!currentChatId)} // Disable if mid-conversation *of a saved chat*
                 >
                     <SelectTrigger id="model-select" className="w-full mt-1">
@@ -503,23 +547,62 @@ export default function BalanceBotPage() {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1"
-              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : "Ask BalanceBuddy anything..."}
+              placeholder={!canSendMessage && !isSubscribed ? "Rate limit reached. Subscribe for unlimited." : "Ask BalanceBuddy anything..."}
               onKeyDown={e => {
-                 if (e.key === 'Enter' && !isLoading && input.trim() && canSendMessage) {
+                 if (e.key === 'Enter' && !isLoading && input.trim() && (canSendMessage || isSubscribed)) {
                     e.preventDefault();
                     handleSend();
                  }
               }}
-              disabled={isLoading || !canSendMessage}
+              disabled={isLoading || (!canSendMessage && !isSubscribed)}
             />
-            <Button onClick={handleSend} disabled={isLoading || !input.trim() || !canSendMessage}>
+            <Button onClick={handleSend} disabled={isLoading || !input.trim() || (!canSendMessage && !isSubscribed)}>
               {isLoading ? '...' : 'Send'}
             </Button>
           </div>
 
           <p className="text-xs text-muted-foreground text-center pt-2">{rateLimitMessage}</p>
+           {!isSubscribed && (
+            <div className="mt-4 p-4 border rounded-lg bg-secondary/30 text-center">
+                <h3 className="text-md font-semibold mb-2">Go Premium!</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Unlock unlimited chat requests, priority support, and more features with BalanceBot Premium.
+                </p>
+                <Button onClick={() => setShowSubscriptionModal(true)} className="w-full sm:w-auto">
+                    <Rocket className="mr-2 h-4 w-4"/> Subscribe Now
+                </Button>
+            </div>
+           )}
         </CardContent>
       </Card>
+
+       {/* Subscription Modal */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-xl">Upgrade to BalanceBot Premium</CardTitle>
+              <CardDescription>Get unlimited access and more!</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li><ShieldCheck className="inline h-4 w-4 mr-1 text-primary" /> Unlimited chat requests with both AI models.</li>
+                <li><Rocket className="inline h-4 w-4 mr-1 text-primary" /> Faster response times (simulated).</li>
+                <li><RotateCcw className="inline h-4 w-4 mr-1 text-primary" /> Access to future premium features.</li>
+              </ul>
+              <p className="text-lg font-semibold text-center">$9.99 / month (Demo)</p>
+              <Button onClick={handleSubscription} className="w-full">
+                Subscribe Now & Unlock All Features
+              </Button>
+              <Button variant="outline" onClick={() => setShowSubscriptionModal(false)} className="w-full mt-2">
+                Maybe Later
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
+
+    
