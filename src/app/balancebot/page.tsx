@@ -8,39 +8,89 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
-import Image from 'next/image'; // Import Image
+import { useToast } from "@/hooks/use-toast"; // Corrected import path
+import Image from 'next/image';
 
 // Define the structure for a chat message
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'error'; // Role can be user, bot (assistant), or error
+  role: 'user' | 'assistant' | 'error';
   content: string;
 }
 
 // Simple function to convert **bold** markdown to <strong> tags and ### to <h3>
 const renderMarkdown = (text: string): { __html: string } => {
   let html = text;
-  // Replace ### Heading with <h3>Heading</h3>
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  // Replace **text** with <strong>text</strong>
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  return { __html: html }; // Return object for dangerouslySetInnerHTML
+  return { __html: html };
 };
 
+const MAX_REQUESTS_PER_HOUR = 10;
+const ONE_HOUR_IN_MS = 60 * 60 * 1000;
+const REQUEST_TIMESTAMPS_KEY = 'balanceBotRequestTimestamps';
 
 export default function BalanceBotPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaViewportRef = useRef<HTMLDivElement>(null); // Ref for the ScrollArea viewport
-  const { toast } = useToast(); // Initialize toast
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  // Function to scroll to the bottom of the chat messages
+  const [requestTimestamps, setRequestTimestamps] = useState<number[]>([]);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
+  const [canSendMessage, setCanSendMessage] = useState<boolean>(true);
+
+  // Load request timestamps from localStorage on mount
+  useEffect(() => {
+    const storedTimestamps = localStorage.getItem(REQUEST_TIMESTAMPS_KEY);
+    if (storedTimestamps) {
+      try {
+        const parsedTimestamps: number[] = JSON.parse(storedTimestamps);
+        const now = Date.now();
+        const validTimestamps = parsedTimestamps.filter(
+          (ts) => now - ts < ONE_HOUR_IN_MS
+        );
+        setRequestTimestamps(validTimestamps);
+        if (validTimestamps.length !== parsedTimestamps.length) {
+            localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(validTimestamps));
+        }
+      } catch (e) {
+        console.error("Failed to parse request timestamps from localStorage", e);
+        localStorage.removeItem(REQUEST_TIMESTAMPS_KEY);
+      }
+    }
+  }, []);
+
+  // Effect to update rate limit status and message
+  useEffect(() => {
+    const now = Date.now();
+    const recentTimestamps = requestTimestamps.filter(
+      (timestamp) => now - timestamp < ONE_HOUR_IN_MS
+    );
+    const numRecentRequests = recentTimestamps.length;
+
+    if (numRecentRequests >= MAX_REQUESTS_PER_HOUR) {
+      setCanSendMessage(false);
+      const oldestRecentRequestTime = recentTimestamps.length > 0 ? recentTimestamps[0] : now; // sorted or find min
+      const expiryTime = oldestRecentRequestTime + ONE_HOUR_IN_MS;
+      const timeToWaitMs = expiryTime - now;
+      const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60))); // Show at least 1 minute
+      setRateLimitMessage(
+        `Rate limit reached. Please try again in ~${minutesToWait} minute(s).`
+      );
+    } else {
+      setCanSendMessage(true);
+      setRateLimitMessage(
+        `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining this hour.`
+      );
+    }
+  }, [requestTimestamps]);
+
+
   const scrollToBottom = () => {
     if (scrollAreaViewportRef.current) {
-      // Use setTimeout to ensure scrolling happens after the DOM updates
       setTimeout(() => {
         if(scrollAreaViewportRef.current){
             const viewport = scrollAreaViewportRef.current.firstChild as HTMLDivElement;
@@ -52,66 +102,71 @@ export default function BalanceBotPage() {
     }
   };
 
-  // Scroll to bottom whenever messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const handleSend = async () => {
     const trimmedInput = input.trim();
-    if (!trimmedInput || isLoading) return; // Prevent sending empty or duplicate messages while loading
+    if (!trimmedInput || isLoading) return;
+
+    if (!canSendMessage) {
+        toast({
+            variant: "destructive",
+            title: "Rate Limit Exceeded",
+            description: rateLimitMessage.includes('Rate limit reached') ? rateLimitMessage : `You have used all ${MAX_REQUESTS_PER_HOUR} requests for this hour.`,
+        });
+        return;
+    }
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: trimmedInput };
-    // Prepare chat history in the format the new API expects (role and content)
     const historyForAPI = messages
-        .filter(msg => msg.role !== 'error') // Exclude error messages from history
-        .map(msg => ({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content }));
+        .filter(msg => msg.role !== 'error')
+        .map(msg => ({ role: msg.role, content: msg.content }));
 
-    setMessages(prev => [...prev, userMsg]); // Add user message to UI immediately
+    setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
-    setInput(''); // Clear input field
+    setInput('');
+
+    // Update request timestamps
+    const now = Date.now();
+    const updatedTimestamps = [...requestTimestamps, now].filter(ts => now - ts < ONE_HOUR_IN_MS);
+    setRequestTimestamps(updatedTimestamps);
+    localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(updatedTimestamps));
+
 
     try {
-      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI }); // Log payload
-      // Call the API endpoint
+      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI });
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send the current user message and the formatted history
         body: JSON.stringify({ message: trimmedInput, history: historyForAPI }),
       });
 
-      console.log(`Received response status from /api/chat: ${response.status}`); // Log status
+      console.log(`Received response status from /api/chat: ${response.status}`);
 
-      // Check if the response is okay (status code 200-299)
       if (!response.ok) {
-        let errorMsg = `Error: ${response.status} ${response.statusText}`; // Default error message
+        let errorMsg = `Error: ${response.status} ${response.statusText}`;
         let errorData: { error?: string } | null = null;
         try {
-          // Attempt to parse the JSON error response *from our API route*
           errorData = await response.json();
-          errorMsg = errorData?.error || errorMsg; // Use specific error from our API if available
-          console.error("API Error Response (Parsed JSON):", errorData); // Log the structured error
+          errorMsg = errorData?.error || errorMsg;
+          console.error("API Error Response (Parsed JSON):", errorData);
         } catch (e) {
-           // If response.json() fails, the error body wasn't JSON
            console.warn("Failed to parse error response as JSON. Status:", response.status);
            try {
-                // Attempt to read the response as text to see if it's HTML or something else
-                const textResponse = await response.text(); // Note: This consumes the body again if json() failed early
-                console.error("Non-JSON error response body:", textResponse);
-                // Display a generic error or part of the textResponse if appropriate
-                // Avoid showing potentially large HTML responses directly to the user
-                 errorMsg = `Server error (${response.status}): Could not retrieve details. Check server logs.`;
+                const textResponse = await response.text();
+                console.error("Non-JSON error response body:", textResponse.substring(0, 500));
+                 errorMsg = `Server error (${response.status}): ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
                 errorMsg = `Server error (${response.status}): Could not read response body.`;
             }
         }
-        console.error("API Call Failed (Frontend):", errorMsg); // Log the final determined error message
+        console.error("API Call Failed (Frontend):", errorMsg);
 
-        // Display error in chat
         const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
@@ -119,25 +174,20 @@ export default function BalanceBotPage() {
         };
         setMessages(prev => [...prev, errorChatMsg]);
 
-        // Show toast for user feedback
         toast({
             variant: "destructive",
             title: "Chatbot Error",
-            description: errorMsg, // Show the detailed error in the toast
+            description: errorMsg,
         });
-        // No need to throw here, handled by adding error message
 
       } else {
-        // Parse the JSON response from the API (if response.ok)
         const data = await response.json();
-        console.log("API Success Response:", data); // Log success data
+        console.log("API Success Response:", data);
 
-        // Check if the response contains the expected 'response' field
         if (data.response) {
           const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
-          setMessages(prev => [...prev, assistantMsg]); // Add assistant message to UI
+          setMessages(prev => [...prev, assistantMsg]);
         } else {
-          // Handle cases where the API response structure is unexpected (but status was ok)
           console.error("Unexpected successful API response structure:", data);
           const errorMsgContent = 'Received an unexpected response from the assistant.';
           const errorMsg: ChatMessage = {
@@ -155,7 +205,6 @@ export default function BalanceBotPage() {
       }
 
     } catch (error: any) {
-       // Catch network errors or other exceptions during fetch/processing
        console.error("Error sending chat message (Network/Fetch):", error);
        const errorMsgContent = `Sorry, failed to send message. ${error.message || 'Please check your connection.'}`;
        const errorMsg: ChatMessage = {
@@ -170,7 +219,7 @@ export default function BalanceBotPage() {
             description: error.message || "Could not connect to the chatbot service.",
         });
     } finally {
-      setIsLoading(false); // Ensure loading state is turned off
+      setIsLoading(false);
     }
   };
 
@@ -188,9 +237,7 @@ export default function BalanceBotPage() {
             <CardTitle>Chat with BalanceBot</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-           {/* Chat Area */}
           <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
-            {/* Content automatically rendered within ScrollArea's viewport */}
             <div className="space-y-3">
                 {messages.length === 0 && (
                 <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
@@ -213,16 +260,13 @@ export default function BalanceBotPage() {
                                 ? 'bg-primary text-primary-foreground rounded-br-none'
                                 : msg.role === 'error'
                                 ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
-                                : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
+                                : 'bg-muted text-muted-foreground rounded-bl-none'
                             }`}
-                            // Render markdown using dangerouslySetInnerHTML
                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
-                           // Apply prose styles for better markdown rendering if needed
-                           // className="prose prose-sm dark:prose-invert"
                         />
                         {msg.role === 'user' && (
                             <Avatar className="h-8 w-8 border shrink-0">
-                                <AvatarFallback>U</AvatarFallback> {/* Placeholder for User */}
+                                <AvatarFallback>U</AvatarFallback>
                             </Avatar>
                         )}
                     </div>
@@ -243,31 +287,32 @@ export default function BalanceBotPage() {
                     </div>
                 </div>
                 )}
-            </div> {/* End of scrollable content div */}
+            </div>
           </ScrollArea>
 
-           {/* Input Area */}
           <div className="flex items-center gap-2 pt-4 border-t">
             <Input
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1"
-              placeholder="Ask me anything..."
+              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : "Ask me anything..."}
               onKeyDown={e => {
-                 if (e.key === 'Enter' && !isLoading && input.trim()) {
-                    e.preventDefault(); // Prevent form submission/newline
+                 if (e.key === 'Enter' && !isLoading && input.trim() && canSendMessage) {
+                    e.preventDefault();
                     handleSend();
                  }
               }}
-              disabled={isLoading}
+              disabled={isLoading || !canSendMessage}
             />
-            <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <Button onClick={handleSend} disabled={isLoading || !input.trim() || !canSendMessage}>
               {isLoading ? '...' : 'Send'}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground text-center pt-2">{rateLimitMessage}</p>
         </CardContent>
       </Card>
     </div>
   );
 }
 
+    
