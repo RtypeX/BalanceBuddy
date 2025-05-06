@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,13 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import React, { useState, type FC, useEffect, use } from 'react';
+import React, { useState, type FC, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { getFirebase } from "@/lib/firebaseClient"; // Assuming this is correctly configured for Firebase v9+
+import { getFirebase } from "@/lib/firebaseClient"; 
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { DatePicker } from '@/components/ui/date-picker'; // Assuming you have this component
-import { differenceInYears, isValid } from 'date-fns';
+import { differenceInYears, isValid, parse } from 'date-fns';
 
 
 interface OnboardingPageProps {
@@ -23,7 +23,7 @@ interface OnboardingPageProps {
 
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: Record<string, string | number | Date | undefined>;
+  formData: Record<string, string | number | undefined>; // Keep dateOfBirth for now, will be derived
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -47,14 +47,10 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const router = useRouter();
-  // Attempt to read page from localStorage first, then fallback to params.
-  // This helps maintain state if the user navigates away and comes back,
-  // or if there's a refresh, but params are the source of truth for direct navigation.
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
       const storedPage = localStorage.getItem('onboardingPage');
       if (storedPage && OnboardingSteps[parseInt(storedPage, 10) - 1]) {
-        // If navigating directly to a different step via URL, prioritize URL param
         if (params.page && params.page !== storedPage) {
             localStorage.setItem('onboardingPage', params.page);
             return parseInt(params.page, 10);
@@ -62,7 +58,6 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         return parseInt(storedPage, 10);
       }
     }
-    // Fallback to params.page if no valid stored page or if direct navigation
     const paramPageNum = parseInt(params.page, 10);
     if (!isNaN(paramPageNum) && OnboardingSteps[paramPageNum - 1]) {
         if (typeof window !== 'undefined') {
@@ -70,13 +65,11 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         }
         return paramPageNum;
     }
-    return 1; // Default to page 1 if param is invalid
+    return 1; 
   };
-
 
   const [currentPageNumber, setCurrentPageNumber] = useState<number>(getInitialPage());
 
-  // Effect to sync URL with state and localStorage
   useEffect(() => {
     const currentPath = `/onboarding/${currentPageNumber}`;
     if (window.location.pathname !== currentPath) {
@@ -85,32 +78,25 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     localStorage.setItem('onboardingPage', String(currentPageNumber));
   }, [currentPageNumber, router]);
 
-  // Effect to handle direct URL changes or browser back/forward
   useEffect(() => {
     const paramPageNum = parseInt(params.page, 10);
     if (!isNaN(paramPageNum) && paramPageNum !== currentPageNumber && OnboardingSteps[paramPageNum -1]) {
       setCurrentPageNumber(paramPageNum);
     } else if (isNaN(paramPageNum) || !OnboardingSteps[paramPageNum-1]) {
-      // If URL param is invalid, reset to a valid page (e.g., first page or stored page)
       setCurrentPageNumber(getInitialPage());
     }
-  }, [params.page]);
-
+  }, [params.page]); // Removed currentPageNumber from deps to avoid loop
 
   const currentStep = OnboardingSteps[currentPageNumber - 1];
   const { toast } = useToast();
   const firebase = getFirebase();
 
   useEffect(() => {
-    // For demo, we'll rely on localStorage for "user started" flag
-    // In a real app, Firebase auth state would be the source of truth
     const userStartedOnboarding = localStorage.getItem('onboardingUserEmail');
     if (!userStartedOnboarding && currentPageNumber > 1) {
-      // If trying to access later steps without starting signup, redirect
       router.push('/onboarding/1');
     }
   }, [router, currentPageNumber]);
-
 
   const getStepTitle = () => {
     switch (currentStep) {
@@ -129,11 +115,13 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     email: '',
     password: '',
     name: '',
-    age: '', // Will be calculated from dateOfBirth
+    // Removed age, will be calculated
     heightFt: '',
     heightIn: '',
     weightLbs: '',
-    dateOfBirth: undefined as Date | undefined,
+    birthMonth: '', // New
+    birthDay: '',   // New
+    birthYear: '',  // New
   });
 
   const totalPages = OnboardingSteps.length;
@@ -143,7 +131,6 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     if (currentPageNumber < totalPages) {
       const nextPage = currentPageNumber + 1;
       setCurrentPageNumber(nextPage);
-      // router.push will be handled by the useEffect syncing URL
     } else {
       completeSignUp();
     }
@@ -153,23 +140,36 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     if (currentPageNumber > 1) {
       const prevPage = currentPageNumber - 1;
       setCurrentPageNumber(prevPage);
-      // router.push will be handled by the useEffect syncing URL
     } else {
       localStorage.removeItem('onboardingPage');
-      localStorage.removeItem('onboardingUserEmail'); // Clear if they cancel from first step
+      localStorage.removeItem('onboardingUserEmail'); 
       router.push('/');
     }
   };
 
  const completeSignUp = async (): Promise<void> => {
-    // Validation
-    if (!formData.dateOfBirth || !isValid(formData.dateOfBirth)) {
-        toast({ variant: "destructive", title: 'Invalid Date of Birth', description: 'Please select a valid date of birth.' });
+    // Parse date of birth components
+    const month = parseInt(formData.birthMonth, 10);
+    const day = parseInt(formData.birthDay, 10);
+    const year = parseInt(formData.birthYear, 10);
+
+    if (isNaN(month) || month < 1 || month > 12 ||
+        isNaN(day) || day < 1 || day > 31 ||
+        isNaN(year) || year < (new Date().getFullYear() - 100) || year > (new Date().getFullYear() - 16)) {
+        toast({ variant: "destructive", title: 'Invalid Date of Birth', description: 'Please enter a valid month (1-12), day (1-31), and year (16-100 years ago).' });
         return;
     }
 
-    const ageNum = differenceInYears(new Date(), formData.dateOfBirth);
-    if (isNaN(ageNum) || ageNum < 16 || ageNum > 100) {
+    // Construct date object - month is 0-indexed for Date constructor
+    const dateOfBirth = new Date(year, month - 1, day);
+
+    if (!isValid(dateOfBirth) || dateOfBirth.getFullYear() !== year || dateOfBirth.getMonth() !== month - 1 || dateOfBirth.getDate() !== day) {
+         toast({ variant: "destructive", title: 'Invalid Date', description: 'The date of birth entered is not a valid calendar date (e.g., Feb 30).' });
+        return;
+    }
+
+    const ageNum = differenceInYears(new Date(), dateOfBirth);
+    if (ageNum < 16 || ageNum > 100) {
       toast({ variant: "destructive", title: 'Invalid Age', description: 'You must be between 16 and 100 years old to sign up.' });
       return;
     }
@@ -196,10 +196,8 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     }
 
     try {
-      // For demo, we simulate user creation and data saving
-      // In a real app, this would involve Firebase Auth and Firestore
-      const auth = getAuth(firebase.app); // Get auth instance from initialized firebase app
-      const db = getFirestore(firebase.app); // Get firestore instance
+      const auth = getAuth(firebase.app); 
+      const db = getFirestore(firebase.app); 
 
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
@@ -208,21 +206,19 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         throw new Error("User creation failed.");
       }
 
-      // Save additional profile data to Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: formData.name,
         email: formData.email,
-        dateOfBirth: formData.dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD string
-        age: ageNum, // Store calculated age
+        dateOfBirth: dateOfBirth.toISOString().split('T')[0], 
+        age: ageNum, 
         heightFt: heightFtNum,
         heightIn: heightInNum,
         weightLbs: weightLbsNum,
-        fitnessGoal: 'Maintain', // Default goal
+        fitnessGoal: 'Maintain', 
       });
 
-      // Store user info (e.g., UID, email) in localStorage to simulate session
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
-      localStorage.removeItem('onboardingPage'); // Clear onboarding progress
+      localStorage.removeItem('onboardingPage'); 
       localStorage.removeItem('onboardingUserEmail');
 
       toast({
@@ -230,7 +226,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         title: 'Signup successful',
         description: 'Your profile has been created.',
       });
-      router.push('/home'); // Navigate to home after successful setup
+      router.push('/home'); 
     } catch (error: any) {
       let errorMessage = "An unknown error occurred during signup.";
       if (error.code) {
@@ -284,7 +280,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
 };
 
 interface SignupFormProps {
-  formData: Record<string, string | number | Date | undefined>;
+  formData: Record<string, string | number | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -292,7 +288,6 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newEmail = e.target.value;
     setFormData({ ...formData, email: newEmail });
-    // Store email in localStorage to persist across steps if needed for demo logic
     if (typeof window !== 'undefined') {
       localStorage.setItem('onboardingUserEmail', newEmail);
     }
@@ -321,7 +316,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           placeholder="Create a strong password"
           required
-          minLength={6} // Basic password strength
+          minLength={6} 
           className="mt-1"
         />
       </div>
@@ -342,34 +337,71 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
 };
 
 interface PersonalInfoFormProps {
-  formData: Record<string, string | number | Date | undefined>;
+  formData: Record<string, string | number | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormData }) => {
-  const maxDate = new Date();
-  maxDate.setFullYear(maxDate.getFullYear() - 16); // Must be at least 16
-  const minDate = new Date();
-  minDate.setFullYear(minDate.getFullYear() - 100); // Not older than 100
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 100;
+  const maxYear = currentYear - 16;
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="dateOfBirth">Date of Birth</Label>
-        <DatePicker
-          date={formData.dateOfBirth as Date | undefined}
-          setDate={(date) => setFormData({ ...formData, dateOfBirth: date })}
-          // You might need to adjust your DatePicker to accept date range constraints
-          // For now, validation is handled on submission
-        />
-         <p className="text-xs text-muted-foreground pt-1">You must be between 16 and 100 years old.</p>
+        <Label>Date of Birth</Label>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label htmlFor="birthMonth" className="text-xs text-muted-foreground">Month (MM)</Label>
+            <Input
+              type="number"
+              id="birthMonth"
+              value={formData.birthMonth as string || ''}
+              onChange={(e) => setFormData({ ...formData, birthMonth: e.target.value })}
+              placeholder="MM"
+              min="1"
+              max="12"
+              required
+              className="mt-1"
+            />
+          </div>
+          <div className="flex-1">
+            <Label htmlFor="birthDay" className="text-xs text-muted-foreground">Day (DD)</Label>
+            <Input
+              type="number"
+              id="birthDay"
+              value={formData.birthDay as string || ''}
+              onChange={(e) => setFormData({ ...formData, birthDay: e.target.value })}
+              placeholder="DD"
+              min="1"
+              max="31"
+              required
+              className="mt-1"
+            />
+          </div>
+          <div className="flex-1">
+            <Label htmlFor="birthYear" className="text-xs text-muted-foreground">Year (YYYY)</Label>
+            <Input
+              type="number"
+              id="birthYear"
+              value={formData.birthYear as string || ''}
+              onChange={(e) => setFormData({ ...formData, birthYear: e.target.value })}
+              placeholder="YYYY"
+              min={minYear}
+              max={maxYear}
+              required
+              className="mt-1"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground pt-1">You must be between 16 and 100 years old.</p>
       </div>
     </div>
   );
 };
 
 interface ProfileFormProps {
-  formData: Record<string, string | number | Date | undefined>;
+  formData: Record<string, string | number | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
