@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+// Select components are no longer needed as we default to Gemini
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Label } from "@/components/ui/label";
 import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw } from 'lucide-react';
 
 // Define the structure for a chat message
@@ -21,14 +22,15 @@ interface ChatMessage {
   content: string;
 }
 
-type ModelType = 'gemini' | 'gpt';
+// ModelType is always 'gemini' now
+type ModelType = 'gemini'; // Simplified, though API route can still handle 'gpt' if sent
 
 // Define the structure for a saved chat
 interface SavedChat {
   id: string;
   name: string;
   messages: ChatMessage[];
-  modelType: ModelType;
+  modelType: ModelType; // Will always be 'gemini' for new saves
   timestamp: number; // For sorting or display
 }
 
@@ -59,7 +61,7 @@ const renderMarkdown = (text: string): { __html: string } => {
 
 const MAX_REQUESTS_PER_HOUR = 10;
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
-const REQUEST_TIMESTAMPS_KEY_PREFIX = 'balanceBotRequestTimestamps_';
+const REQUEST_TIMESTAMPS_KEY = 'balanceBotRequestTimestamps_Gemini'; // Single key for Gemini
 const SAVED_CHATS_KEY = 'balanceBotSavedChats';
 const SUBSCRIPTION_STATUS_KEY = 'balanceBotSubscriptionStatus';
 
@@ -70,7 +72,8 @@ export default function BalanceBotPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
+  // selectedModel is no longer needed, defaults to Gemini
+  // const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
 
   const [requestTimestamps, setRequestTimestamps] = useState<number[]>([]);
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
@@ -83,8 +86,6 @@ export default function BalanceBotPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null); // Track current loaded/saved chat ID
 
 
-  const getRequestTimestampsKey = () => `${REQUEST_TIMESTAMPS_KEY_PREFIX}${selectedModel}`;
-
   // Load request timestamps, saved chats, and subscription status from localStorage on mount
   useEffect(() => {
     const subscriptionStatus = localStorage.getItem(SUBSCRIPTION_STATUS_KEY);
@@ -92,8 +93,7 @@ export default function BalanceBotPage() {
       setIsSubscribed(true);
     }
 
-    const key = getRequestTimestampsKey();
-    const storedTimestamps = localStorage.getItem(key);
+    const storedTimestamps = localStorage.getItem(REQUEST_TIMESTAMPS_KEY);
     if (storedTimestamps) {
       try {
         const parsedTimestamps: number[] = JSON.parse(storedTimestamps);
@@ -103,11 +103,11 @@ export default function BalanceBotPage() {
         );
         setRequestTimestamps(validTimestamps);
         if (validTimestamps.length !== parsedTimestamps.length) {
-            localStorage.setItem(key, JSON.stringify(validTimestamps));
+            localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(validTimestamps));
         }
       } catch (e) {
         console.error("Failed to parse request timestamps from localStorage", e);
-        localStorage.removeItem(key);
+        localStorage.removeItem(REQUEST_TIMESTAMPS_KEY);
       }
     } else {
       setRequestTimestamps([]);
@@ -123,13 +123,13 @@ export default function BalanceBotPage() {
         }
     }
 
-  }, [selectedModel]); // Re-run if selectedModel changes for timestamps
+  }, []); 
 
   // Effect to update rate limit status and message
   useEffect(() => {
     if (isSubscribed) {
       setCanSendMessage(true);
-      setRateLimitMessage(`Premium Subscription: Unlimited requests for ${selectedModel.toUpperCase()}.`);
+      setRateLimitMessage(`Premium Subscription: Unlimited BalanceBot requests.`);
       return;
     }
 
@@ -146,15 +146,15 @@ export default function BalanceBotPage() {
       const timeToWaitMs = expiryTime - now;
       const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60)));
       setRateLimitMessage(
-        `Rate limit reached for ${selectedModel.toUpperCase()}. Please try again in ~${minutesToWait} minute(s) or subscribe for unlimited access.`
+        `Rate limit reached for BalanceBot. Please try again in ~${minutesToWait} minute(s) or subscribe for unlimited access.`
       );
     } else {
       setCanSendMessage(true);
       setRateLimitMessage(
-        `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining for ${selectedModel.toUpperCase()} this hour.`
+        `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining for BalanceBot this hour.`
       );
     }
-  }, [requestTimestamps, selectedModel, isSubscribed]);
+  }, [requestTimestamps, isSubscribed]);
 
 
   const scrollToBottom = () => {
@@ -191,7 +191,7 @@ export default function BalanceBotPage() {
     const existingChat = currentChatId ? savedChats.find(c => c.id === currentChatId) : null;
     let chatNameToSave = existingChat?.name;
 
-    if (!chatNameToSave) { // Prompt for name if it's a new save or existing chat has no name (shouldn't happen if logic is correct)
+    if (!chatNameToSave) { // Prompt for name if it's a new save
         chatNameToSave = prompt("Enter a name for this chat:", `Chat - ${new Date().toLocaleDateString()}`);
         if (chatNameToSave === null) return; // User cancelled
         if (!chatNameToSave.trim()) {
@@ -204,7 +204,7 @@ export default function BalanceBotPage() {
       id: currentChatId || crypto.randomUUID(),
       name: chatNameToSave,
       messages: [...messages],
-      modelType: selectedModel,
+      modelType: 'gemini', // Always Gemini
       timestamp: Date.now(),
     };
 
@@ -228,7 +228,7 @@ export default function BalanceBotPage() {
     const chatToLoad = savedChats.find(chat => chat.id === chatId);
     if (chatToLoad) {
       setMessages([...chatToLoad.messages]); // Load a copy
-      setSelectedModel(chatToLoad.modelType);
+      // setSelectedModel(chatToLoad.modelType); // No longer needed
       setCurrentChatId(chatToLoad.id); // Set the current chat ID
       setInput('');
       setIsLoading(false);
@@ -278,7 +278,7 @@ export default function BalanceBotPage() {
         toast({
             variant: "destructive",
             title: "Rate Limit Exceeded",
-            description: rateLimitMessage.includes('Rate limit reached') ? rateLimitMessage : `You have used all ${MAX_REQUESTS_PER_HOUR} requests for ${selectedModel.toUpperCase()} this hour.`,
+            description: rateLimitMessage.includes('Rate limit reached') ? rateLimitMessage : `You have used all ${MAX_REQUESTS_PER_HOUR} requests for BalanceBot this hour.`,
         });
         return;
     }
@@ -295,21 +295,20 @@ export default function BalanceBotPage() {
     // Update request timestamps if not subscribed
     if (!isSubscribed) {
         const now = Date.now();
-        const key = getRequestTimestampsKey();
         const updatedTimestamps = [...requestTimestamps, now].filter(ts => now - ts < ONE_HOUR_IN_MS);
         setRequestTimestamps(updatedTimestamps);
-        localStorage.setItem(key, JSON.stringify(updatedTimestamps));
+        localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(updatedTimestamps));
     }
 
 
     try {
-      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI, modelType: selectedModel });
+      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI, modelType: 'gemini' }); // Always Gemini
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: trimmedInput, history: historyForAPI, modelType: selectedModel }),
+        body: JSON.stringify({ message: trimmedInput, history: historyForAPI, modelType: 'gemini' }), // Hardcode gemini
       });
 
       console.log(`Received response status from /api/chat: ${response.status}`);
@@ -321,7 +320,7 @@ export default function BalanceBotPage() {
           errorData = await response.json();
           errorMsg = errorData?.error || errorMsg;
           if (errorMsg.includes("API key missing")) {
-            errorMsg = `Server configuration error: ${selectedModel.toUpperCase()} API key is missing. Please check the .env file on the server.`;
+            errorMsg = `Server configuration error: Gemini API key is missing. Please check the .env file on the server.`;
           }
           console.error("API Error Response (Parsed JSON):", errorData);
         } catch (e) {
@@ -329,24 +328,24 @@ export default function BalanceBotPage() {
            try {
                 const textResponse = await response.text();
                 console.error("Non-JSON error response body:", textResponse.substring(0, 500));
-                 errorMsg = `Server error (${response.status}) for ${selectedModel.toUpperCase()}: ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
+                 errorMsg = `Server error (${response.status}) for Gemini: ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
-                errorMsg = `Server error (${response.status}) for ${selectedModel.toUpperCase()}: Could not read response body.`;
+                errorMsg = `Server error (${response.status}) for Gemini: Could not read response body.`;
             }
         }
-        console.error(`API Call Failed (Frontend) for ${selectedModel.toUpperCase()}:`, errorMsg);
+        console.error(`API Call Failed (Frontend) for Gemini:`, errorMsg);
 
         const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
-          content: `Failed to get response from ${selectedModel.toUpperCase()}: ${errorMsg}`
+          content: `Failed to get response from BalanceBot: ${errorMsg}`
         };
         setMessages(prev => [...prev, errorChatMsg]);
 
         toast({
             variant: "destructive",
-            title: `Chatbot Error (${selectedModel.toUpperCase()})`,
+            title: `Chatbot Error (BalanceBot)`,
             description: errorMsg,
         });
 
@@ -358,8 +357,8 @@ export default function BalanceBotPage() {
           const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
           setMessages(prev => [...prev, assistantMsg]);
         } else {
-          console.error(`Unexpected successful API response structure from ${selectedModel.toUpperCase()}:`, data);
-          const errorMsgContent = `Received an unexpected response from the ${selectedModel.toUpperCase()} assistant.`;
+          console.error(`Unexpected successful API response structure from BalanceBot:`, data);
+          const errorMsgContent = `Received an unexpected response from BalanceBot.`;
           const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
@@ -368,15 +367,15 @@ export default function BalanceBotPage() {
           setMessages(prev => [...prev, errorMsg]);
            toast({
                 variant: "destructive",
-                title: `Chatbot Error (${selectedModel.toUpperCase()})`,
+                title: `Chatbot Error (BalanceBot)`,
                 description: errorMsgContent,
             });
         }
       }
 
     } catch (error: any) {
-       console.error(`Error sending chat message for ${selectedModel.toUpperCase()} (Network/Fetch):`, error);
-       const errorMsgContent = `Sorry, failed to send message to ${selectedModel.toUpperCase()}. ${error.message || 'Please check your connection.'}`;
+       console.error(`Error sending chat message for BalanceBot (Network/Fetch):`, error);
+       const errorMsgContent = `Sorry, failed to send message to BalanceBot. ${error.message || 'Please check your connection.'}`;
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
@@ -385,7 +384,7 @@ export default function BalanceBotPage() {
        setMessages(prev => [...prev, errorMsg]);
         toast({
             variant: "destructive",
-            title: `Network Error (${selectedModel.toUpperCase()})`,
+            title: `Network Error (BalanceBot)`,
             description: error.message || "Could not connect to the chatbot service.",
         });
     } finally {
@@ -448,7 +447,7 @@ export default function BalanceBotPage() {
                     ? `Editing: "${savedChats.find(c => c.id === currentChatId)?.name}"`
                     : messages.length === 0
                     ? "Start a new conversation."
-                    : `Conversation with ${selectedModel.toUpperCase()}`}
+                    : `Conversation with BalanceBot`}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -461,34 +460,7 @@ export default function BalanceBotPage() {
             </div>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="pt-2">
-                <Label htmlFor="model-select">Select AI Model:</Label>
-                <Select
-                    value={selectedModel}
-                    onValueChange={(value) => {
-                      if (messages.length > 0 && currentChatId) {
-                        toast({
-                          title: "Model Locked",
-                          description: "Cannot change model for an existing saved chat. Start a new chat to switch.",
-                          variant: "default"
-                        });
-                      } else {
-                        setSelectedModel(value as ModelType);
-                      }
-                    }}
-                    disabled={isLoading || (messages.length > 0 && !!currentChatId)} // Disable if mid-conversation *of a saved chat*
-                >
-                    <SelectTrigger id="model-select" className="w-full mt-1">
-                        <SelectValue placeholder="Select AI Model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="gemini">Gemini (Google)</SelectItem>
-                        <SelectItem value="gpt">GPT (OpenAI)</SelectItem>
-                    </SelectContent>
-                </Select>
-                 {messages.length > 0 && !!currentChatId && <p className="text-xs text-muted-foreground pt-1">Model cannot be changed for a saved chat. Start a new chat to switch.</p>}
-            </div>
-
+            {/* Model selection UI removed */}
           <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
             <div className="space-y-3">
                 {messages.length === 0 && (
@@ -547,7 +519,7 @@ export default function BalanceBotPage() {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1"
-              placeholder={!canSendMessage && !isSubscribed ? "Rate limit reached. Subscribe for unlimited." : "Ask BalanceBuddy anything..."}
+              placeholder={!canSendMessage && !isSubscribed ? "Rate limit reached. Subscribe for unlimited." : "Ask BalanceBot anything..."}
               onKeyDown={e => {
                  if (e.key === 'Enter' && !isLoading && input.trim() && (canSendMessage || isSubscribed)) {
                     e.preventDefault();
@@ -586,7 +558,7 @@ export default function BalanceBotPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li><ShieldCheck className="inline h-4 w-4 mr-1 text-primary" /> Unlimited chat requests with both AI models.</li>
+                <li><ShieldCheck className="inline h-4 w-4 mr-1 text-primary" /> Unlimited chat requests with BalanceBot.</li>
                 <li><Rocket className="inline h-4 w-4 mr-1 text-primary" /> Faster response times (simulated).</li>
                 <li><RotateCcw className="inline h-4 w-4 mr-1 text-primary" /> Access to future premium features.</li>
               </ul>

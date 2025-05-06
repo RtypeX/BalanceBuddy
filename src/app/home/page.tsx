@@ -15,7 +15,7 @@ import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
-import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight, Utensils, Bed } from 'lucide-react'; // Added Bed icon
+import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight, Utensils, Bed, SettingsIcon } from 'lucide-react'; // Added Bed and SettingsIcon
 
 export default function Home() {
   const router = useRouter();
@@ -40,6 +40,10 @@ export default function Home() {
     localStorage.removeItem('startWeight'); // Clear start weight
     localStorage.removeItem('nutritionLog'); // Clear nutrition log
     localStorage.removeItem('sleepLog'); // Clear sleep log
+    localStorage.removeItem('balanceBotSubscriptionStatus');
+    localStorage.removeItem('balanceBotNotificationPreferences');
+    localStorage.removeItem('balanceBotRequestTimestamps_Gemini');
+    localStorage.removeItem('balanceBotSavedChats');
     router.push('/'); // Redirect to login/start screen
   };
 
@@ -54,10 +58,11 @@ export default function Home() {
           width={75} // Adjusted size
           height={75} // Adjusted size
           className="mr-2 rounded-full" // Added rounded-full
+          data-ai-hint="logo fitness"
         />
         <h1 className="text-2xl font-semibold text-primary">BalanceBuddy</h1> {/* Use primary color */}
         <div className="flex items-center space-x-4">
-          {/* ModeToggle moved to profile page */}
+          {/* ModeToggle moved to profile page/settings page */}
           <Avatar>
             {/* Consider adding a dynamic user image source if available */}
             <AvatarImage src="https://picsum.photos/50/50" alt="User Avatar" data-ai-hint="user avatar"/>
@@ -169,7 +174,7 @@ export default function Home() {
               </CardContent>
             </Card>
 
-           {/* Profile Card - Moved to the end */}
+           {/* Profile Card */}
            <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
             <CardContent className="p-4 flex flex-col items-center text-center">
                <User className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
@@ -180,7 +185,23 @@ export default function Home() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Settings Card - New Card */}
+          <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+               <SettingsIcon className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
+              <h2 className="text-lg font-semibold mb-1">Settings</h2>
+              <p className="text-sm text-muted-foreground mb-3">App preferences, billing, and account.</p>
+              <Button variant="outline" onClick={() => router.push('/settings')} className="w-full">
+                Go to Settings
+              </Button>
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </div>
   );
+}
+
+    
