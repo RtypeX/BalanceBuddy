@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useState, type FC, useEffect } from 'react';
-// import { getAuth, createUserWithEmailAndPassword } from "firebase/auth"; // Firebase Auth removed for demo
-// import { getFirestore, doc, setDoc } from "firebase/firestore";       // Firestore removed for demo
+import { useRouter } from 'next/navigation';
+import React, { useState, type FC, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
-// import { getFirebase } from "@/lib/firebaseClient"; // Firebase client removed for demo
+import { getFirebase } from "@/lib/firebaseClient"; // Assuming this is correctly configured for Firebase v9+
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { DatePicker } from '@/components/ui/date-picker'; // Assuming you have this component
+import { differenceInYears, isValid } from 'date-fns';
+
 
 interface OnboardingPageProps {
   params: {
@@ -20,7 +23,7 @@ interface OnboardingPageProps {
 
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: Record<string, string | number>;
+  formData: Record<string, string | number | Date | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -28,7 +31,6 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
   switch (step) {
     case 'signup':
       return <SignupForm formData={formData} setFormData={setFormData} />;
-
     case 'personal-info':
       return <PersonalInfoForm formData={formData} setFormData={setFormData} />;
     case 'profile':
@@ -45,51 +47,70 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const router = useRouter();
-  // Use a state variable for the page number, initialized from local storage or params
-  const [currentPageNumber, setCurrentPageNumber] = useState<number>(() => {
+  // Attempt to read page from localStorage first, then fallback to params.
+  // This helps maintain state if the user navigates away and comes back,
+  // or if there's a refresh, but params are the source of truth for direct navigation.
+  const getInitialPage = () => {
+    if (typeof window !== 'undefined') {
       const storedPage = localStorage.getItem('onboardingPage');
-      const paramPage = parseInt(params.page);
-      if (storedPage) {
-          const storedNum = parseInt(storedPage);
-          // If URL doesn't match stored, trust URL and update storage
-          if (storedNum !== paramPage) {
-              localStorage.setItem('onboardingPage', params.page);
-              return paramPage;
-          }
-          return storedNum;
+      if (storedPage && OnboardingSteps[parseInt(storedPage, 10) - 1]) {
+        // If navigating directly to a different step via URL, prioritize URL param
+        if (params.page && params.page !== storedPage) {
+            localStorage.setItem('onboardingPage', params.page);
+            return parseInt(params.page, 10);
+        }
+        return parseInt(storedPage, 10);
       }
-      // If no stored page, use param and save it
-      localStorage.setItem('onboardingPage', params.page);
-      return paramPage;
-  });
+    }
+    // Fallback to params.page if no valid stored page or if direct navigation
+    const paramPageNum = parseInt(params.page, 10);
+    if (!isNaN(paramPageNum) && OnboardingSteps[paramPageNum - 1]) {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('onboardingPage', String(paramPageNum));
+        }
+        return paramPageNum;
+    }
+    return 1; // Default to page 1 if param is invalid
+  };
 
+
+  const [currentPageNumber, setCurrentPageNumber] = useState<number>(getInitialPage());
+
+  // Effect to sync URL with state and localStorage
   useEffect(() => {
-      // Ensure state updates if params change unexpectedly (e.g., manual URL change)
-      const paramPageNum = parseInt(params.page);
-      if (currentPageNumber !== paramPageNum) {
-          setCurrentPageNumber(paramPageNum);
-          localStorage.setItem('onboardingPage', params.page);
-      }
-  }, [params.page, currentPageNumber]);
+    const currentPath = `/onboarding/${currentPageNumber}`;
+    if (window.location.pathname !== currentPath) {
+      router.replace(currentPath, { scroll: false });
+    }
+    localStorage.setItem('onboardingPage', String(currentPageNumber));
+  }, [currentPageNumber, router]);
+
+  // Effect to handle direct URL changes or browser back/forward
+  useEffect(() => {
+    const paramPageNum = parseInt(params.page, 10);
+    if (!isNaN(paramPageNum) && paramPageNum !== currentPageNumber && OnboardingSteps[paramPageNum -1]) {
+      setCurrentPageNumber(paramPageNum);
+    } else if (isNaN(paramPageNum) || !OnboardingSteps[paramPageNum-1]) {
+      // If URL param is invalid, reset to a valid page (e.g., first page or stored page)
+      setCurrentPageNumber(getInitialPage());
+    }
+  }, [params.page]);
 
 
   const currentStep = OnboardingSteps[currentPageNumber - 1];
   const { toast } = useToast();
-  // const firebase = getFirebase(); // Firebase removed
+  const firebase = getFirebase();
 
   useEffect(() => {
-    // Keep simple login check or remove if not needed for demo
-    const userLoggedIn = localStorage.getItem('user'); // Check if user *started* signup/login
-    if (!userLoggedIn && currentPageNumber > 1) { // Allow access to page 1 (signup) even if not "logged in"
-      router.push('/'); // Redirect to start if trying to access later steps without starting
+    // For demo, we'll rely on localStorage for "user started" flag
+    // In a real app, Firebase auth state would be the source of truth
+    const userStartedOnboarding = localStorage.getItem('onboardingUserEmail');
+    if (!userStartedOnboarding && currentPageNumber > 1) {
+      // If trying to access later steps without starting signup, redirect
+      router.push('/onboarding/1');
     }
-     // Redirect to correct onboarding step if URL mismatches state/localStorage
-     const targetPath = `/onboarding/${currentPageNumber}`;
-     if (window.location.pathname !== targetPath) {
-       // Use replace to avoid adding incorrect history entries
-       router.replace(targetPath);
-     }
   }, [router, currentPageNumber]);
+
 
   const getStepTitle = () => {
     switch (currentStep) {
@@ -98,20 +119,21 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
       case 'personal-info':
         return 'Personal Information';
       case 'profile':
-        return 'Finish Profile'; // Updated title
+        return 'Finish Profile';
       default:
         return 'Onboarding';
     }
   };
-  // Updated formData state to match new ProfileData structure
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
-    age: '',
-    heightFt: '', // Height in feet
-    heightIn: '', // Height in inches
-    weightLbs: '', // Weight in pounds
+    age: '', // Will be calculated from dateOfBirth
+    heightFt: '',
+    heightIn: '',
+    weightLbs: '',
+    dateOfBirth: undefined as Date | undefined,
   });
 
   const totalPages = OnboardingSteps.length;
@@ -120,9 +142,8 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const handleNext = () => {
     if (currentPageNumber < totalPages) {
       const nextPage = currentPageNumber + 1;
-      localStorage.setItem('onboardingPage', String(nextPage));
-      setCurrentPageNumber(nextPage); // Update state
-      router.push(`/onboarding/${nextPage}`); // Navigate
+      setCurrentPageNumber(nextPage);
+      // router.push will be handled by the useEffect syncing URL
     } else {
       completeSignUp();
     }
@@ -131,86 +152,109 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const handleBack = () => {
     if (currentPageNumber > 1) {
       const prevPage = currentPageNumber - 1;
-      localStorage.setItem('onboardingPage', String(prevPage));
-      setCurrentPageNumber(prevPage); // Update state
-      router.push(`/onboarding/${prevPage}`); // Navigate
+      setCurrentPageNumber(prevPage);
+      // router.push will be handled by the useEffect syncing URL
     } else {
-      localStorage.removeItem('onboardingPage'); // Clear page when going back to start
-      localStorage.removeItem('user'); // Clear user marker if going back from step 1
+      localStorage.removeItem('onboardingPage');
+      localStorage.removeItem('onboardingUserEmail'); // Clear if they cancel from first step
       router.push('/');
     }
   };
 
-  const completeSignUp = async (): Promise<void> => {
-     // Validation
-     const heightFtNum = parseInt(formData.heightFt);
-     const heightInNum = parseInt(formData.heightIn);
-     const weightLbsNum = parseFloat(formData.weightLbs);
-     const ageNum = parseInt(formData.age);
+ const completeSignUp = async (): Promise<void> => {
+    // Validation
+    if (!formData.dateOfBirth || !isValid(formData.dateOfBirth)) {
+        toast({ variant: "destructive", title: 'Invalid Date of Birth', description: 'Please select a valid date of birth.' });
+        return;
+    }
 
-     if (isNaN(heightFtNum) || heightFtNum < 0 || isNaN(heightInNum) || heightInNum < 0 || heightInNum >= 12) {
-         toast({ variant: "destructive", title: 'Invalid Height', description: 'Please enter valid feet and inches (0-11).' });
-         return;
-     }
-     if (isNaN(weightLbsNum) || weightLbsNum <= 0) {
-         toast({ variant: "destructive", title: 'Invalid Weight', description: 'Please enter a valid weight in pounds.' });
-         return;
-     }
-     if (isNaN(ageNum) || ageNum <= 0) {
-         toast({ variant: "destructive", title: 'Invalid Age', description: 'Please enter a valid age.' });
-         return;
-     }
-      if (!formData.name.trim()) {
-         toast({ variant: "destructive", title: 'Missing Name', description: 'Please enter your name.' });
-         return;
-      }
-       if (!formData.email.trim() || !formData.password) {
-          toast({ variant: "destructive", title: 'Missing Credentials', description: 'Email and password are required.' });
-          return;
-       }
+    const ageNum = differenceInYears(new Date(), formData.dateOfBirth);
+    if (isNaN(ageNum) || ageNum < 16 || ageNum > 100) {
+      toast({ variant: "destructive", title: 'Invalid Age', description: 'You must be between 16 and 100 years old to sign up.' });
+      return;
+    }
+
+    const heightFtNum = parseInt(formData.heightFt);
+    const heightInNum = parseInt(formData.heightIn);
+    const weightLbsNum = parseFloat(formData.weightLbs);
+
+    if (isNaN(heightFtNum) || heightFtNum < 0 || isNaN(heightInNum) || heightInNum < 0 || heightInNum >= 12) {
+        toast({ variant: "destructive", title: 'Invalid Height', description: 'Please enter valid feet and inches (0-11).' });
+        return;
+    }
+    if (isNaN(weightLbsNum) || weightLbsNum <= 0) {
+        toast({ variant: "destructive", title: 'Invalid Weight', description: 'Please enter a valid weight in pounds.' });
+        return;
+    }
+    if (!formData.name.trim()) {
+        toast({ variant: "destructive", title: 'Missing Name', description: 'Please enter your name.' });
+        return;
+    }
+    if (!formData.email.trim() || !formData.password) {
+        toast({ variant: "destructive", title: 'Missing Credentials', description: 'Email and password are required.' });
+        return;
+    }
 
     try {
-      // --- Firebase Authentication Removed ---
-      // const auth = getAuth();
-      // const db = getFirestore();
-      // const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      // const user = userCredential.user;
-      // if (!user) throw new Error("User not found after creation");
-      // const userDocRef = doc(db, 'users', user.uid);
-      // await setDoc(userDocRef, { ... });
-      // --- End Firebase Removal ---
+      // For demo, we simulate user creation and data saving
+      // In a real app, this would involve Firebase Auth and Firestore
+      const auth = getAuth(firebase.app); // Get auth instance from initialized firebase app
+      const db = getFirestore(firebase.app); // Get firestore instance
 
-      // Use demo user ID or a simple placeholder for local storage
-      const userId = `demo_${Date.now()}`;
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
 
-      // Store user information in localStorage (simulates login)
-      localStorage.setItem('user', JSON.stringify({ id: userId, email: formData.email }));
+      if (!user) {
+        throw new Error("User creation failed.");
+      }
 
-      // Store profile data in localStorage using the new structure
-      localStorage.setItem('profileData', JSON.stringify({
+      // Save additional profile data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
         name: formData.name,
-        email: formData.email, // Keep email if needed for display, though not used for auth here
-        age: ageNum,
+        email: formData.email,
+        dateOfBirth: formData.dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD string
+        age: ageNum, // Store calculated age
         heightFt: heightFtNum,
         heightIn: heightInNum,
         weightLbs: weightLbsNum,
         fitnessGoal: 'Maintain', // Default goal
-      }));
+      });
 
-       localStorage.removeItem('onboardingPage'); // Clear onboarding progress
+      // Store user info (e.g., UID, email) in localStorage to simulate session
+      localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
+      localStorage.removeItem('onboardingPage'); // Clear onboarding progress
+      localStorage.removeItem('onboardingUserEmail');
 
-      toast({id: "user-created",
+      toast({
+        id: "user-created",
         title: 'Signup successful',
         description: 'Your profile has been created.',
       });
       router.push('/home'); // Navigate to home after successful setup
     } catch (error: any) {
-      // Keep basic error handling for potential issues (though Firebase errors are removed)
+      let errorMessage = "An unknown error occurred during signup.";
+      if (error.code) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            errorMessage = "This email address is already in use.";
+            break;
+          case "auth/weak-password":
+            errorMessage = "Password is too weak. Please choose a stronger password.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "The email address is not valid.";
+            break;
+          default:
+            errorMessage = error.message || "Failed to sign up.";
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       toast({
         id: "user-creation-failed",
         variant: 'destructive',
         title: 'Sign up failed',
-        description: error.message || "An unknown error occurred.",
+        description: errorMessage,
       });
     }
   };
@@ -218,17 +262,18 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <Card className="w-96">
+      <Card className="w-full max-w-md shadow-lg rounded-lg">
         <CardHeader>
-          <CardTitle>{getStepTitle()}</CardTitle>
+          <CardTitle className="text-center text-2xl font-semibold">{getStepTitle()}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Progress value={progress} className='mb-4' />
-          <OnboardingStepComponent step={currentStep} formData={formData} setFormData={setFormData} />          <div className='flex justify-between'>
-            <Button variant="secondary" onClick={handleBack}>
+        <CardContent className="space-y-6 p-6">
+          <Progress value={progress} className='mb-6 h-2.5' />
+          <OnboardingStepComponent step={currentStep} formData={formData} setFormData={setFormData} />
+          <div className='flex justify-between pt-4'>
+            <Button variant="outline" onClick={handleBack} className="px-6 py-2">
               {currentPageNumber === 1 ? 'Cancel' : 'Back'}
             </Button>
-            <Button onClick={handleNext}>
+            <Button onClick={handleNext} className="px-6 py-2">
               {currentPageNumber < totalPages ? 'Next' : 'Complete Sign Up'}
             </Button>
           </div>
@@ -239,22 +284,30 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
 };
 
 interface SignupFormProps {
-  formData: Record<string, string | number>;
+  formData: Record<string, string | number | Date | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setFormData({ ...formData, email: newEmail });
+    // Store email in localStorage to persist across steps if needed for demo logic
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onboardingUserEmail', newEmail);
+    }
+  };
+
   return (
     <div className="space-y-4">
-
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
           type="email"
           id="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          placeholder="Your Email"
+          value={formData.email as string || ''}
+          onChange={handleEmailChange}
+          placeholder="your.email@example.com"
           required
           className="mt-1"
         />
@@ -264,21 +317,22 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
         <Input
           type="password"
           id="password"
-          value={formData.password}
+          value={formData.password as string || ''}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          placeholder="Your password"
+          placeholder="Create a strong password"
           required
+          minLength={6} // Basic password strength
           className="mt-1"
         />
       </div>
        <div>
-        <Label htmlFor="name">Name</Label>
+        <Label htmlFor="name">Full Name</Label>
         <Input
           type="text"
           id="name"
-          value={formData.name}
+          value={formData.name as string || ''}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Your Name"
+          placeholder="Your Full Name"
           required
           className="mt-1"
         />
@@ -288,39 +342,40 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
 };
 
 interface PersonalInfoFormProps {
-  formData: Record<string, string | number>;
+  formData: Record<string, string | number | Date | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormData }) => {
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() - 16); // Must be at least 16
+  const minDate = new Date();
+  minDate.setFullYear(minDate.getFullYear() - 100); // Not older than 100
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="age">Age</Label>
-        <Input
-          type="number"
-          id="age"
-          value={formData.age}
-          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-          placeholder="Your Age"
-          required
-          min="0"
-          className="mt-1"
+        <Label htmlFor="dateOfBirth">Date of Birth</Label>
+        <DatePicker
+          date={formData.dateOfBirth as Date | undefined}
+          setDate={(date) => setFormData({ ...formData, dateOfBirth: date })}
+          // You might need to adjust your DatePicker to accept date range constraints
+          // For now, validation is handled on submission
         />
+         <p className="text-xs text-muted-foreground pt-1">You must be between 16 and 100 years old.</p>
       </div>
     </div>
   );
 };
 
 interface ProfileFormProps {
-  formData: Record<string, string | number>;
+  formData: Record<string, string | number | Date | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
   return (
     <div className="space-y-4">
-      {/* Height Input */}
       <div className="space-y-2">
           <Label>Height</Label>
           <div className="flex gap-2">
@@ -329,7 +384,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                 <Input
                   type="number"
                   id="heightFt"
-                  value={formData.heightFt}
+                  value={formData.heightFt as string || ''}
                   onChange={(e) => setFormData({ ...formData, heightFt: e.target.value })}
                   placeholder="ft"
                   min="0"
@@ -342,29 +397,28 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                   <Input
                       type="number"
                       id="heightIn"
-                      value={formData.heightIn}
+                      value={formData.heightIn as string || ''}
                       onChange={(e) => setFormData({ ...formData, heightIn: e.target.value })}
                       placeholder="in"
                       min="0"
-                      max="11" // Inches < 12
+                      max="11"
                       required
                       className="mt-1"
                   />
               </div>
           </div>
         </div>
-        {/* Weight Input */}
         <div>
             <Label htmlFor="weightLbs">Weight (lbs)</Label>
             <Input
               type="number"
               id="weightLbs"
-              value={formData.weightLbs}
+              value={formData.weightLbs as string || ''}
               onChange={(e) => setFormData({ ...formData, weightLbs: e.target.value })}
               placeholder="Your Weight in lbs"
               required
               min="0"
-              step="0.1" // Allow decimal for lbs
+              step="0.1"
               className="mt-1"
             />
         </div>
