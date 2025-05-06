@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Added CardDescription
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -153,12 +154,13 @@ const ProfilePage = () => {
   return (
     <div className="flex flex-col items-center justify-start min-h-screen py-6 px-4">
       <div className="flex items-center justify-between p-4 w-full max-w-md mb-4">
-        <h1 className="text-2xl font-semibold">Profile</h1>
-         <Button variant="secondary" onClick={() => router.push('/home')}>Back to Home</Button>
+        <h1 className="text-2xl font-semibold">Edit Profile</h1>
+         <Button variant="secondary" onClick={() => router.push('/settings')}>Back to Settings</Button>
       </div>
       <Card className="w-full max-w-md shadow-md rounded-lg">
         <CardHeader>
-          <CardTitle>User Profile</CardTitle>
+          <CardTitle>Your Personal Information</CardTitle>
+          <CardDescription>Keep your profile details up to date.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {isEditing ? (
@@ -248,7 +250,7 @@ const ProfilePage = () => {
                   placeholder="Your Email"
                   className="mt-1"
                   // Consider making email read-only if it's tied to authentication
-                  // readOnly
+                  readOnly
                 />
               </div>
               <div>

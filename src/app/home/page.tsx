@@ -15,7 +15,7 @@ import Image from 'next/image';
 import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
-import { BarChart3, Dumbbell, FileText, User, Bot, Calendar, Weight, Utensils, Bed, SettingsIcon } from 'lucide-react'; // Added Bed and SettingsIcon
+import { BarChart3, Dumbbell, FileText, Bot, Calendar, Weight, Utensils, Bed, SettingsIcon } from 'lucide-react'; // Removed User, Added Bed and SettingsIcon
 
 export default function Home() {
   const router = useRouter();
@@ -173,18 +173,6 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
-
-           {/* Profile Card */}
-           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
-            <CardContent className="p-4 flex flex-col items-center text-center">
-               <User className="h-12 w-12 mb-2 text-primary" /> {/* Icon */}
-              <h2 className="text-lg font-semibold mb-1">Profile</h2>
-              <p className="text-sm text-muted-foreground mb-3">Manage your profile and settings.</p>
-              <Button variant="outline" onClick={() => router.push('/profile')} className="w-full">
-                Edit Profile
-              </Button>
-            </CardContent>
-          </Card>
 
           {/* Settings Card - New Card */}
           <Card className="shadow-md rounded-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">

@@ -11,7 +11,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
-import { DollarSign, CreditCard, Shield, Bell, LogOut, UserCircle, History, FileText } from 'lucide-react';
+import { DollarSign, CreditCard, Shield, Bell, LogOut, UserCircle, History, FileText, Edit3 } from 'lucide-react'; // Added Edit3
 
 const SUBSCRIPTION_STATUS_KEY = 'balanceBotSubscriptionStatus'; // Same key as BalanceBot page
 const NOTIFICATION_PREFERENCES_KEY = 'balanceBotNotificationPreferences';
@@ -34,6 +34,8 @@ const SettingsPage = () => {
     newFeatures: true,
     promotionalOffers: false,
   });
+  const [userEmail, setUserEmail] = useState<string>('loading...');
+
 
   useEffect(() => {
     const subscriptionStatus = localStorage.getItem(SUBSCRIPTION_STATUS_KEY);
@@ -48,6 +50,23 @@ const SettingsPage = () => {
         console.error("Failed to parse notification preferences", e);
       }
     }
+    
+    if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const parsedUser = JSON.parse(storedUser);
+                setUserEmail(parsedUser.email || 'demo@example.com');
+            } catch (e) {
+                 console.error("Failed to parse user from localStorage", e);
+                 setUserEmail('demo@example.com');
+            }
+        } else {
+            setUserEmail('demo@example.com'); // Fallback if no user in localStorage
+        }
+    }
+
+
   }, []);
 
   const handleSubscriptionToggle = () => {
@@ -110,10 +129,12 @@ const SettingsPage = () => {
           <CardContent className="space-y-4">
             <div>
               <Label>Email Address</Label>
-              <Input type="email" value={typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').email || 'demo@example.com' : 'loading...'} disabled />
+              <Input type="email" value={userEmail} disabled />
               <p className="text-xs text-muted-foreground mt-1">Your email is used for login and account recovery.</p>
             </div>
-            <Button variant="outline" onClick={() => router.push('/profile')}>Edit Profile</Button>
+            <Button variant="outline" onClick={() => router.push('/profile')}>
+                <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+            </Button>
              <Separator />
              <div className="flex items-center justify-between">
                 <Label htmlFor="theme-toggle" className="flex-grow">Dark Mode</Label>
@@ -226,5 +247,3 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
-
-    
