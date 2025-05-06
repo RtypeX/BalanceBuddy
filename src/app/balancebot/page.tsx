@@ -196,40 +196,41 @@ export default function BalanceBotPage() {
                 <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
                 )}
                 {messages.map((msg) => (
-                <div key={msg.id} className={`mb-3 flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {msg.role !== 'user' && (
-                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
-                           <AvatarImage
-                             src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
-                             alt="BalanceBot Logo"
-                             className="object-cover"
-                           />
-                           <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
-                        msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground rounded-br-none'
-                            : msg.role === 'error'
-                            ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
-                            : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
-                        }`}
-                        // Render markdown using dangerouslySetInnerHTML
-                       dangerouslySetInnerHTML={renderMarkdown(msg.content)}
-                       // Apply prose styles for better markdown rendering if needed
-                       // className="prose prose-sm dark:prose-invert"
-                    />
-
-                    {msg.role === 'user' && (
-                        <Avatar className="h-8 w-8 border">
-                            <AvatarFallback>U</AvatarFallback> {/* Placeholder for User */}
-                        </Avatar>
-                    )}
+                <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex items-start gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {msg.role !== 'user' && (
+                            <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                               <AvatarImage
+                                 src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+                                 alt="BalanceBot Logo"
+                                 className="object-cover"
+                               />
+                               <AvatarFallback>{msg.role === 'error' ? '⚠️' : 'BB'}</AvatarFallback>
+                            </Avatar>
+                        )}
+                        <div className={`rounded-xl px-4 py-2 text-sm shadow-sm break-words ${
+                            msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground rounded-br-none'
+                                : msg.role === 'error'
+                                ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
+                                : 'bg-muted text-muted-foreground rounded-bl-none' // Standard bot message
+                            }`}
+                            // Render markdown using dangerouslySetInnerHTML
+                           dangerouslySetInnerHTML={renderMarkdown(msg.content)}
+                           // Apply prose styles for better markdown rendering if needed
+                           // className="prose prose-sm dark:prose-invert"
+                        />
+                        {msg.role === 'user' && (
+                            <Avatar className="h-8 w-8 border shrink-0">
+                                <AvatarFallback>U</AvatarFallback> {/* Placeholder for User */}
+                            </Avatar>
+                        )}
+                    </div>
                 </div>
                 ))}
                 {isLoading && (
                 <div className="flex justify-start items-start gap-3 mb-3">
-                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center">
+                        <Avatar className="h-8 w-8 border bg-primary text-primary-foreground flex items-center justify-center shrink-0">
                             <AvatarImage
                              src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
                              alt="BalanceBot Logo Typing"
@@ -269,3 +270,4 @@ export default function BalanceBotPage() {
     </div>
   );
 }
+
