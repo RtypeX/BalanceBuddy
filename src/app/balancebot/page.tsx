@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast"; // Corrected import path
+import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 
 // Define the structure for a chat message
@@ -21,10 +21,29 @@ interface ChatMessage {
 // Simple function to convert **bold** markdown to <strong> tags and ### to <h3>
 const renderMarkdown = (text: string): { __html: string } => {
   let html = text;
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  // Convert ### headings
+  html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold my-2">$1</h3>');
+  // Convert **bold** text
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Convert lists (simple unordered list)
+  html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/^(<li>.*<\/li>\s*)+/gim, '<ul>$&</ul>'); // Wrap LIs in UL
+
+  // Convert newlines to <br> tags for better spacing, but not inside <ul> or <h3>
+  // This is a bit tricky. Let's try a more targeted approach for paragraphs.
+  // Split by major blocks, then process paragraphs.
+  const blocks = html.split(/(<\/?(?:ul|h3)[^>]*>)/g);
+  html = blocks.map((block, index) => {
+    if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) { // If it's not a tag separator and not inside ul/h3
+      return block.split('\n').map(p => p.trim() ? `<p>${p.trim()}</p>` : '').join('');
+    }
+    return block;
+  }).join('');
+  html = html.replace(/<p><\/p>/g, ''); // Remove empty paragraphs
+
   return { __html: html };
 };
+
 
 const MAX_REQUESTS_PER_HOUR = 10;
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
@@ -153,6 +172,9 @@ export default function BalanceBotPage() {
         try {
           errorData = await response.json();
           errorMsg = errorData?.error || errorMsg;
+          if (errorMsg.includes("API key missing")) {
+            errorMsg = "Server configuration error: API key is missing. Please check the .env file on the server.";
+          }
           console.error("API Error Response (Parsed JSON):", errorData);
         } catch (e) {
            console.warn("Failed to parse error response as JSON. Status:", response.status);
@@ -261,7 +283,7 @@ export default function BalanceBotPage() {
                                 : msg.role === 'error'
                                 ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
                                 : 'bg-muted text-muted-foreground rounded-bl-none'
-                            }`}
+                            } prose prose-sm max-w-none`} // Added prose classes for markdown styling
                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
                         />
                         {msg.role === 'user' && (
@@ -314,5 +336,3 @@ export default function BalanceBotPage() {
     </div>
   );
 }
-
-    
