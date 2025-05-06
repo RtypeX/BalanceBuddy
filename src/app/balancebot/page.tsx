@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -17,6 +20,8 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'error';
   content: string;
 }
+
+type ModelType = 'gemini' | 'gpt';
 
 // Simple function to convert **bold** markdown to <strong> tags and ### to <h3>
 const renderMarkdown = (text: string): { __html: string } => {
@@ -30,11 +35,9 @@ const renderMarkdown = (text: string): { __html: string } => {
   html = html.replace(/^(<li>.*<\/li>\s*)+/gim, '<ul>$&</ul>'); // Wrap LIs in UL
 
   // Convert newlines to <br> tags for better spacing, but not inside <ul> or <h3>
-  // This is a bit tricky. Let's try a more targeted approach for paragraphs.
-  // Split by major blocks, then process paragraphs.
   const blocks = html.split(/(<\/?(?:ul|h3)[^>]*>)/g);
   html = blocks.map((block, index) => {
-    if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) { // If it's not a tag separator and not inside ul/h3
+    if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) { 
       return block.split('\n').map(p => p.trim() ? `<p>${p.trim()}</p>` : '').join('');
     }
     return block;
@@ -47,7 +50,7 @@ const renderMarkdown = (text: string): { __html: string } => {
 
 const MAX_REQUESTS_PER_HOUR = 10;
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
-const REQUEST_TIMESTAMPS_KEY = 'balanceBotRequestTimestamps';
+const REQUEST_TIMESTAMPS_KEY_PREFIX = 'balanceBotRequestTimestamps_';
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -56,14 +59,18 @@ export default function BalanceBotPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
 
   const [requestTimestamps, setRequestTimestamps] = useState<number[]>([]);
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
   const [canSendMessage, setCanSendMessage] = useState<boolean>(true);
 
-  // Load request timestamps from localStorage on mount
+  const getRequestTimestampsKey = () => `${REQUEST_TIMESTAMPS_KEY_PREFIX}${selectedModel}`;
+
+  // Load request timestamps from localStorage on mount and when model changes
   useEffect(() => {
-    const storedTimestamps = localStorage.getItem(REQUEST_TIMESTAMPS_KEY);
+    const key = getRequestTimestampsKey();
+    const storedTimestamps = localStorage.getItem(key);
     if (storedTimestamps) {
       try {
         const parsedTimestamps: number[] = JSON.parse(storedTimestamps);
@@ -73,14 +80,16 @@ export default function BalanceBotPage() {
         );
         setRequestTimestamps(validTimestamps);
         if (validTimestamps.length !== parsedTimestamps.length) {
-            localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(validTimestamps));
+            localStorage.setItem(key, JSON.stringify(validTimestamps));
         }
       } catch (e) {
         console.error("Failed to parse request timestamps from localStorage", e);
-        localStorage.removeItem(REQUEST_TIMESTAMPS_KEY);
+        localStorage.removeItem(key);
       }
+    } else {
+      setRequestTimestamps([]); // Reset if no key found for current model
     }
-  }, []);
+  }, [selectedModel]);
 
   // Effect to update rate limit status and message
   useEffect(() => {
@@ -92,20 +101,20 @@ export default function BalanceBotPage() {
 
     if (numRecentRequests >= MAX_REQUESTS_PER_HOUR) {
       setCanSendMessage(false);
-      const oldestRecentRequestTime = recentTimestamps.length > 0 ? recentTimestamps[0] : now; // sorted or find min
+      const oldestRecentRequestTime = recentTimestamps.length > 0 ? recentTimestamps[0] : now; 
       const expiryTime = oldestRecentRequestTime + ONE_HOUR_IN_MS;
       const timeToWaitMs = expiryTime - now;
-      const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60))); // Show at least 1 minute
+      const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60))); 
       setRateLimitMessage(
-        `Rate limit reached. Please try again in ~${minutesToWait} minute(s).`
+        `Rate limit reached for ${selectedModel.toUpperCase()}. Please try again in ~${minutesToWait} minute(s).`
       );
     } else {
       setCanSendMessage(true);
       setRateLimitMessage(
-        `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining this hour.`
+        `${MAX_REQUESTS_PER_HOUR - numRecentRequests} of ${MAX_REQUESTS_PER_HOUR} requests remaining for ${selectedModel.toUpperCase()} this hour.`
       );
     }
-  }, [requestTimestamps]);
+  }, [requestTimestamps, selectedModel]);
 
 
   const scrollToBottom = () => {
@@ -133,7 +142,7 @@ export default function BalanceBotPage() {
         toast({
             variant: "destructive",
             title: "Rate Limit Exceeded",
-            description: rateLimitMessage.includes('Rate limit reached') ? rateLimitMessage : `You have used all ${MAX_REQUESTS_PER_HOUR} requests for this hour.`,
+            description: rateLimitMessage.includes('Rate limit reached') ? rateLimitMessage : `You have used all ${MAX_REQUESTS_PER_HOUR} requests for ${selectedModel.toUpperCase()} this hour.`,
         });
         return;
     }
@@ -149,19 +158,20 @@ export default function BalanceBotPage() {
 
     // Update request timestamps
     const now = Date.now();
+    const key = getRequestTimestampsKey();
     const updatedTimestamps = [...requestTimestamps, now].filter(ts => now - ts < ONE_HOUR_IN_MS);
     setRequestTimestamps(updatedTimestamps);
-    localStorage.setItem(REQUEST_TIMESTAMPS_KEY, JSON.stringify(updatedTimestamps));
+    localStorage.setItem(key, JSON.stringify(updatedTimestamps));
 
 
     try {
-      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI });
+      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI, modelType: selectedModel });
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: trimmedInput, history: historyForAPI }),
+        body: JSON.stringify({ message: trimmedInput, history: historyForAPI, modelType: selectedModel }),
       });
 
       console.log(`Received response status from /api/chat: ${response.status}`);
@@ -173,7 +183,7 @@ export default function BalanceBotPage() {
           errorData = await response.json();
           errorMsg = errorData?.error || errorMsg;
           if (errorMsg.includes("API key missing")) {
-            errorMsg = "Server configuration error: API key is missing. Please check the .env file on the server.";
+            errorMsg = `Server configuration error: ${selectedModel.toUpperCase()} API key is missing. Please check the .env file on the server.`;
           }
           console.error("API Error Response (Parsed JSON):", errorData);
         } catch (e) {
@@ -181,24 +191,24 @@ export default function BalanceBotPage() {
            try {
                 const textResponse = await response.text();
                 console.error("Non-JSON error response body:", textResponse.substring(0, 500));
-                 errorMsg = `Server error (${response.status}): ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
+                 errorMsg = `Server error (${response.status}) for ${selectedModel.toUpperCase()}: ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
-                errorMsg = `Server error (${response.status}): Could not read response body.`;
+                errorMsg = `Server error (${response.status}) for ${selectedModel.toUpperCase()}: Could not read response body.`;
             }
         }
-        console.error("API Call Failed (Frontend):", errorMsg);
+        console.error(`API Call Failed (Frontend) for ${selectedModel.toUpperCase()}:`, errorMsg);
 
         const errorChatMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'error',
-          content: `Failed to get response: ${errorMsg}`
+          content: `Failed to get response from ${selectedModel.toUpperCase()}: ${errorMsg}`
         };
         setMessages(prev => [...prev, errorChatMsg]);
 
         toast({
             variant: "destructive",
-            title: "Chatbot Error",
+            title: `Chatbot Error (${selectedModel.toUpperCase()})`,
             description: errorMsg,
         });
 
@@ -210,8 +220,8 @@ export default function BalanceBotPage() {
           const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: data.response };
           setMessages(prev => [...prev, assistantMsg]);
         } else {
-          console.error("Unexpected successful API response structure:", data);
-          const errorMsgContent = 'Received an unexpected response from the assistant.';
+          console.error(`Unexpected successful API response structure from ${selectedModel.toUpperCase()}:`, data);
+          const errorMsgContent = `Received an unexpected response from the ${selectedModel.toUpperCase()} assistant.`;
           const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
@@ -220,15 +230,15 @@ export default function BalanceBotPage() {
           setMessages(prev => [...prev, errorMsg]);
            toast({
                 variant: "destructive",
-                title: "Chatbot Error",
+                title: `Chatbot Error (${selectedModel.toUpperCase()})`,
                 description: errorMsgContent,
             });
         }
       }
 
     } catch (error: any) {
-       console.error("Error sending chat message (Network/Fetch):", error);
-       const errorMsgContent = `Sorry, failed to send message. ${error.message || 'Please check your connection.'}`;
+       console.error(`Error sending chat message for ${selectedModel.toUpperCase()} (Network/Fetch):`, error);
+       const errorMsgContent = `Sorry, failed to send message to ${selectedModel.toUpperCase()}. ${error.message || 'Please check your connection.'}`;
        const errorMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'error',
@@ -237,7 +247,7 @@ export default function BalanceBotPage() {
        setMessages(prev => [...prev, errorMsg]);
         toast({
             variant: "destructive",
-            title: "Network Error",
+            title: `Network Error (${selectedModel.toUpperCase()})`,
             description: error.message || "Could not connect to the chatbot service.",
         });
     } finally {
@@ -257,12 +267,29 @@ export default function BalanceBotPage() {
       <Card className="w-full max-w-xl shadow-md rounded-lg">
         <CardHeader>
             <CardTitle>Chat with BalanceBot</CardTitle>
+             <div className="pt-2">
+                <Label htmlFor="model-select">Select AI Model:</Label>
+                <Select
+                    value={selectedModel}
+                    onValueChange={(value) => setSelectedModel(value as ModelType)}
+                    disabled={isLoading || messages.length > 0} // Disable if mid-conversation or loading
+                >
+                    <SelectTrigger id="model-select" className="w-full mt-1">
+                        <SelectValue placeholder="Select AI Model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="gemini">Gemini (Google)</SelectItem>
+                        <SelectItem value="gpt">GPT (OpenAI)</SelectItem>
+                    </SelectContent>
+                </Select>
+                 {messages.length > 0 && <p className="text-xs text-muted-foreground pt-1">Model cannot be changed mid-conversation. Clear chat or refresh to switch.</p>}
+            </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
             <div className="space-y-3">
                 {messages.length === 0 && (
-                <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
+                <p className="text-center text-muted-foreground">Ask BalanceBot about fitness! Select a model above.</p>
                 )}
                 {messages.map((msg) => (
                 <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -283,7 +310,7 @@ export default function BalanceBotPage() {
                                 : msg.role === 'error'
                                 ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
                                 : 'bg-muted text-muted-foreground rounded-bl-none'
-                            } prose prose-sm max-w-none`} // Added prose classes for markdown styling
+                            } prose prose-sm max-w-none`} 
                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
                         />
                         {msg.role === 'user' && (
@@ -317,7 +344,7 @@ export default function BalanceBotPage() {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1"
-              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : "Ask me anything..."}
+              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : `Ask ${selectedModel.toUpperCase()} anything...`}
               onKeyDown={e => {
                  if (e.key === 'Enter' && !isLoading && input.trim() && canSendMessage) {
                     e.preventDefault();
