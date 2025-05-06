@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-
+import { Trash2, Save, FilePlus2, FolderOpen } from 'lucide-react'; // Added Save, FilePlus2 and FolderOpen icons
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -22,6 +22,15 @@ interface ChatMessage {
 }
 
 type ModelType = 'gemini' | 'gpt';
+
+// Define the structure for a saved chat
+interface SavedChat {
+  id: string;
+  name: string;
+  messages: ChatMessage[];
+  modelType: ModelType;
+  timestamp: number; // For sorting or display
+}
 
 // Simple function to convert **bold** markdown to <strong> tags and ### to <h3>
 const renderMarkdown = (text: string): { __html: string } => {
@@ -37,7 +46,7 @@ const renderMarkdown = (text: string): { __html: string } => {
   // Convert newlines to <br> tags for better spacing, but not inside <ul> or <h3>
   const blocks = html.split(/(<\/?(?:ul|h3)[^>]*>)/g);
   html = blocks.map((block, index) => {
-    if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) { 
+    if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) {
       return block.split('\n').map(p => p.trim() ? `<p>${p.trim()}</p>` : '').join('');
     }
     return block;
@@ -51,6 +60,7 @@ const renderMarkdown = (text: string): { __html: string } => {
 const MAX_REQUESTS_PER_HOUR = 10;
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 const REQUEST_TIMESTAMPS_KEY_PREFIX = 'balanceBotRequestTimestamps_';
+const SAVED_CHATS_KEY = 'balanceBotSavedChats';
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -65,9 +75,13 @@ export default function BalanceBotPage() {
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
   const [canSendMessage, setCanSendMessage] = useState<boolean>(true);
 
+  const [savedChats, setSavedChats] = useState<SavedChat[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null); // Track current loaded/saved chat ID
+
+
   const getRequestTimestampsKey = () => `${REQUEST_TIMESTAMPS_KEY_PREFIX}${selectedModel}`;
 
-  // Load request timestamps from localStorage on mount and when model changes
+  // Load request timestamps and saved chats from localStorage on mount
   useEffect(() => {
     const key = getRequestTimestampsKey();
     const storedTimestamps = localStorage.getItem(key);
@@ -87,9 +101,20 @@ export default function BalanceBotPage() {
         localStorage.removeItem(key);
       }
     } else {
-      setRequestTimestamps([]); // Reset if no key found for current model
+      setRequestTimestamps([]);
     }
-  }, [selectedModel]);
+
+    const storedSavedChats = localStorage.getItem(SAVED_CHATS_KEY);
+    if (storedSavedChats) {
+        try {
+            setSavedChats(JSON.parse(storedSavedChats).sort((a: SavedChat, b: SavedChat) => b.timestamp - a.timestamp));
+        } catch (e) {
+            console.error("Failed to parse saved chats from localStorage", e);
+            localStorage.removeItem(SAVED_CHATS_KEY);
+        }
+    }
+
+  }, [selectedModel]); // Re-run if selectedModel changes for timestamps
 
   // Effect to update rate limit status and message
   useEffect(() => {
@@ -101,10 +126,10 @@ export default function BalanceBotPage() {
 
     if (numRecentRequests >= MAX_REQUESTS_PER_HOUR) {
       setCanSendMessage(false);
-      const oldestRecentRequestTime = recentTimestamps.length > 0 ? recentTimestamps[0] : now; 
+      const oldestRecentRequestTime = recentTimestamps.length > 0 ? recentTimestamps[0] : now;
       const expiryTime = oldestRecentRequestTime + ONE_HOUR_IN_MS;
       const timeToWaitMs = expiryTime - now;
-      const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60))); 
+      const minutesToWait = Math.max(1, Math.ceil(timeToWaitMs / (1000 * 60)));
       setRateLimitMessage(
         `Rate limit reached for ${selectedModel.toUpperCase()}. Please try again in ~${minutesToWait} minute(s).`
       );
@@ -133,6 +158,85 @@ export default function BalanceBotPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setInput('');
+    setIsLoading(false);
+    setCurrentChatId(null); // No longer associated with a saved chat
+    // Reset selected model to default or keep current, up to preference
+    // setSelectedModel('gemini');
+    toast({ title: "New Chat Started" });
+  };
+
+  const handleSaveChat = async () => {
+    if (messages.length === 0) {
+      toast({ title: "Cannot save empty chat", variant: "destructive" });
+      return;
+    }
+
+    let chatNameToSave: string | null = null;
+    if (!currentChatId) { // Only prompt for name if it's a new save
+        chatNameToSave = prompt("Enter a name for this chat:", `Chat - ${new Date().toLocaleDateString()}`);
+        if (chatNameToSave === null) return; // User cancelled
+        if (!chatNameToSave.trim()) {
+            toast({ title: "Chat name cannot be empty", variant: "destructive" });
+            return;
+        }
+    }
+
+
+    const chatData: SavedChat = {
+      id: currentChatId || crypto.randomUUID(),
+      name: chatNameToSave || savedChats.find(c => c.id === currentChatId)?.name || `Chat - ${new Date().toLocaleDateString()}`,
+      messages: [...messages],
+      modelType: selectedModel,
+      timestamp: Date.now(),
+    };
+
+    let updatedSavedChats;
+    if (savedChats.some(chat => chat.id === chatData.id)) {
+      // Update existing chat
+      updatedSavedChats = savedChats.map(chat => chat.id === chatData.id ? chatData : chat);
+    } else {
+      // Add new chat
+      updatedSavedChats = [...savedChats, chatData];
+    }
+    updatedSavedChats.sort((a, b) => b.timestamp - a.timestamp);
+
+    setSavedChats(updatedSavedChats);
+    localStorage.setItem(SAVED_CHATS_KEY, JSON.stringify(updatedSavedChats));
+    setCurrentChatId(chatData.id); // Set current chat ID after saving
+    toast({ title: "Chat Saved", description: `"${chatData.name}" has been saved.` });
+  };
+
+  const handleLoadChat = (chatId: string) => {
+    const chatToLoad = savedChats.find(chat => chat.id === chatId);
+    if (chatToLoad) {
+      setMessages([...chatToLoad.messages]); // Load a copy
+      setSelectedModel(chatToLoad.modelType);
+      setCurrentChatId(chatToLoad.id); // Set the current chat ID
+      setInput('');
+      setIsLoading(false);
+      toast({ title: "Chat Loaded", description: `"${chatToLoad.name}" has been loaded.`});
+    } else {
+      toast({ title: "Error Loading Chat", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    const chatToDelete = savedChats.find(chat => chat.id === chatId);
+    if (chatToDelete) {
+        const updatedSavedChats = savedChats.filter(chat => chat.id !== chatId);
+        setSavedChats(updatedSavedChats);
+        localStorage.setItem(SAVED_CHATS_KEY, JSON.stringify(updatedSavedChats));
+        if (currentChatId === chatId) { // If deleting the currently loaded chat
+            handleNewChat(); // Start a new chat
+        }
+        toast({ title: "Chat Deleted", description: `"${chatToDelete.name}" has been deleted.`});
+    }
+  };
+
 
   const handleSend = async () => {
     const trimmedInput = input.trim();
@@ -264,15 +368,71 @@ export default function BalanceBotPage() {
           </Button>
       </div>
 
-      <Card className="w-full max-w-xl shadow-md rounded-lg">
+      {/* Saved Chats Section */}
+      <Card className="w-full max-w-xl shadow-md rounded-lg mb-6">
         <CardHeader>
-            <CardTitle>Chat with BalanceBot</CardTitle>
-             <div className="pt-2">
+          <CardTitle className="flex items-center gap-2">
+            <FolderOpen className="h-5 w-5 text-primary" />
+            Saved Conversations
+          </CardTitle>
+          <CardDescription>Load or delete previous conversations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {savedChats.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No chats saved yet. Start a conversation and save it!</p>
+          ) : (
+            <ScrollArea className="h-40 border rounded-md p-2">
+              <ul className="space-y-1">
+                {savedChats.map(chat => (
+                  <li key={chat.id} className="flex justify-between items-center p-2 hover:bg-muted/50 rounded-md">
+                    <span
+                        className="text-sm font-medium truncate cursor-pointer flex-grow mr-2 hover:text-primary"
+                        onClick={() => handleLoadChat(chat.id)}
+                        title={`Load chat: ${chat.name} (Model: ${chat.modelType.toUpperCase()})`}
+                    >
+                      {chat.name}
+                    </span>
+                    <Button variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => handleDeleteChat(chat.id)} title="Delete chat">
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete chat</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+
+      <Card className="w-full max-w-xl shadow-md rounded-lg">
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Chat with BalanceBot</CardTitle>
+              <CardDescription className="mt-1">
+                {currentChatId && savedChats.find(c => c.id === currentChatId)
+                    ? `Editing: "${savedChats.find(c => c.id === currentChatId)?.name}"`
+                    : messages.length === 0
+                    ? "Start a new conversation."
+                    : `Conversation with ${selectedModel.toUpperCase()}`}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleSaveChat} disabled={isLoading || messages.length === 0} title="Save current chat">
+                    <Save className="mr-2 h-4 w-4" /> Save
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNewChat} title="Start a new chat">
+                    <FilePlus2 className="mr-2 h-4 w-4" /> New
+                </Button>
+            </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="pt-2">
                 <Label htmlFor="model-select">Select AI Model:</Label>
                 <Select
                     value={selectedModel}
                     onValueChange={(value) => setSelectedModel(value as ModelType)}
-                    disabled={isLoading || messages.length > 0} // Disable if mid-conversation or loading
+                    disabled={isLoading || (messages.length > 0 && !!currentChatId)} // Disable if mid-conversation *of a saved chat*
                 >
                     <SelectTrigger id="model-select" className="w-full mt-1">
                         <SelectValue placeholder="Select AI Model" />
@@ -282,14 +442,13 @@ export default function BalanceBotPage() {
                         <SelectItem value="gpt">GPT (OpenAI)</SelectItem>
                     </SelectContent>
                 </Select>
-                 {messages.length > 0 && <p className="text-xs text-muted-foreground pt-1">Model cannot be changed mid-conversation. Clear chat or refresh to switch.</p>}
+                 {messages.length > 0 && !!currentChatId && <p className="text-xs text-muted-foreground pt-1">Model cannot be changed for a saved chat. Start a new chat to switch.</p>}
             </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+
           <ScrollArea className="h-96 w-full rounded-md border p-4" viewportRef={scrollAreaViewportRef}>
             <div className="space-y-3">
                 {messages.length === 0 && (
-                <p className="text-center text-muted-foreground">Ask BalanceBot about fitness! Select a model above.</p>
+                <p className="text-center text-muted-foreground">Ask BalanceBot about fitness!</p>
                 )}
                 {messages.map((msg) => (
                 <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -310,7 +469,7 @@ export default function BalanceBotPage() {
                                 : msg.role === 'error'
                                 ? 'bg-destructive text-destructive-foreground italic rounded-bl-none'
                                 : 'bg-muted text-muted-foreground rounded-bl-none'
-                            } prose prose-sm max-w-none`} 
+                            } prose prose-sm max-w-none`}
                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
                         />
                         {msg.role === 'user' && (
@@ -357,10 +516,10 @@ export default function BalanceBotPage() {
               {isLoading ? '...' : 'Send'}
             </Button>
           </div>
+
           <p className="text-xs text-muted-foreground text-center pt-2">{rateLimitMessage}</p>
         </CardContent>
       </Card>
     </div>
   );
 }
-
