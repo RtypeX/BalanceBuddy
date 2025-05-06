@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
-import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw } from 'lucide-react';
+import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw, User } from 'lucide-react'; // Added User icon
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -485,8 +485,8 @@ export default function BalanceBotPage() {
                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
                         />
                         {msg.role === 'user' && (
-                            <Avatar className="h-8 w-8 border shrink-0">
-                                <AvatarFallback>U</AvatarFallback>
+                            <Avatar className="h-8 w-8 border shrink-0 flex items-center justify-center">
+                                <User className="h-5 w-5 text-muted-foreground" />
                             </Avatar>
                         )}
                     </div>
