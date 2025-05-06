@@ -344,7 +344,7 @@ export default function BalanceBotPage() {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1"
-              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : `Ask ${selectedModel.toUpperCase()} anything...`}
+              placeholder={!canSendMessage ? "Rate limit reached. Try again later." : "Ask BalanceBuddy anything..."}
               onKeyDown={e => {
                  if (e.key === 'Enter' && !isLoading && input.trim() && canSendMessage) {
                     e.preventDefault();
@@ -363,3 +363,4 @@ export default function BalanceBotPage() {
     </div>
   );
 }
+
