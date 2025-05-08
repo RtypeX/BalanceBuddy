@@ -21,6 +21,7 @@ import { signOut } from 'firebase/auth'; // Import signOut
 
 export default function Home() {
   const router = useRouter();
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -28,6 +29,27 @@ export default function Home() {
     // if (!user) {
     //   router.push('/');
     // }
+
+    const profileDataString = localStorage.getItem('profileData');
+    if (profileDataString) {
+      try {
+        const profileData = JSON.parse(profileDataString);
+        setUserName(profileData.name || 'User');
+      } catch (e) {
+        console.error("Failed to parse profile data for greeting:", e);
+        setUserName('User'); // Fallback name
+      }
+    } else if (user) {
+        // Fallback if profileData is not set but user is logged in (e.g., demo user)
+        try {
+            const parsedUser = JSON.parse(user);
+            setUserName(parsedUser.email === 'demo@example.com' ? 'Demo User' : 'User');
+        } catch(e) {
+            setUserName('User');
+        }
+    } else {
+        setUserName('Guest'); // If no user or profile data
+    }
   }, [router]);
 
   const clearAllUserData = () => {
@@ -71,21 +93,26 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background"> {/* Use background for main container */}
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-card text-card-foreground shadow-md border-b"> {/* Use card colors for header */}
-        <Image
-          src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
-          alt="BalanceBuddy Logo"
-          width={75} // Adjusted size
-          height={75} // Adjusted size
-          className="mr-2 rounded-full" // Added rounded-full
-          data-ai-hint="logo fitness"
-        />
-        <h1 className="text-2xl font-semibold text-primary">BalanceBuddy</h1> {/* Use primary color */}
+        <div className="flex items-center">
+            <Image
+              src="https://cdn.glitch.global/baa5928e-6c09-4efd-bb8d-06e0fe6e4aac/BB.png?v=1729706784295"
+              alt="BalanceBuddy Logo"
+              width={75} // Adjusted size
+              height={75} // Adjusted size
+              className="mr-3 rounded-full" // Added rounded-full and margin
+              data-ai-hint="logo fitness"
+            />
+            <div className="flex flex-col">
+                 <h1 className="text-2xl font-semibold text-primary">BalanceBuddy</h1> {/* Use primary color */}
+                 {userName && <p className="text-md text-muted-foreground">Hello, {userName}</p>}
+            </div>
+        </div>
         <div className="flex items-center space-x-4">
           {/* ModeToggle moved to profile page/settings page */}
           <Avatar>
             {/* Consider adding a dynamic user image source if available */}
             <AvatarImage src="https://picsum.photos/50/50" alt="User Avatar" data-ai-hint="user avatar"/>
-            <AvatarFallback>BB</AvatarFallback>
+            <AvatarFallback>{userName ? userName.substring(0,2).toUpperCase() : 'BB'}</AvatarFallback>
           </Avatar>
           <Button variant="ghost" onClick={handleLogout}>Logout</Button> {/* Use ghost variant for less emphasis */}
         </div>
@@ -210,3 +237,4 @@ export default function Home() {
     </div>
   );
 }
+
