@@ -1,6 +1,6 @@
 
 // src/app/api/chat/route.ts
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, ChatSession } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
@@ -8,22 +8,36 @@ const GEMINI_MODEL_NAME = "gemini-1.5-flash-latest";
 const GPT_MODEL_NAME = "gpt-4o-mini"; // Or your preferred GPT model
 const CHAT_HISTORY_CONTEXT_LIMIT = 5; // Number of recent message pairs (user + model) to send as context
 
+interface ApiChatMessagePart {
+  text: string;
+}
+
 interface ApiChatMessage {
   role: 'user' | 'model' | 'system'; // Gemini uses 'user' and 'model', OpenAI uses 'user', 'assistant', 'system'
-  parts?: { text: string }[]; // For Gemini
+  parts?: ApiChatMessagePart[]; // For Gemini
   content?: string; // For OpenAI
+}
+
+interface ProfileData {
+  name?: string;
+  age?: number;
+  heightFt?: number;
+  heightIn?: number;
+  weightLbs?: number;
+  fitnessGoal?: 'Lose Weight' | 'Gain Weight' | 'Maintain';
 }
 
 interface RequestBody {
   message: string;
   history?: { role: string; content: string }[];
   modelType: 'gemini' | 'gpt';
+  profileData?: ProfileData | null; // Added profileData
 }
 
 export async function POST(req: Request) {
   let modelTypeFromRequest: 'gemini' | 'gpt' | undefined;
   try {
-    const { message, history = [], modelType }: RequestBody = await req.json();
+    const { message, history = [], modelType, profileData }: RequestBody = await req.json();
     modelTypeFromRequest = modelType; // Store for logging in catch block
 
     if (!message) {
@@ -37,6 +51,13 @@ export async function POST(req: Request) {
 
     let botResponseContent: string | null = null;
     const recentHistory = history.slice(-CHAT_HISTORY_CONTEXT_LIMIT * 2);
+
+    // Construct system message with profile data
+    let systemMessageContent = 'You are BalanceBot, a friendly and helpful fitness and wellness assistant. Focus on providing helpful, safe, and positive advice related to exercise, nutrition, mindfulness, and general well-being. Avoid giving medical advice. If asked about topics outside of fitness and wellness, gently steer the conversation back or politely decline.';
+    if (profileData) {
+        systemMessageContent += ` The user's profile is as follows: Name: ${profileData.name || 'N/A'}, Age: ${profileData.age || 'N/A'}, Height: ${profileData.heightFt || 'N/A'} ft ${profileData.heightIn || 'N/A'} in, Weight: ${profileData.weightLbs || 'N/A'} lbs, Fitness Goal: ${profileData.fitnessGoal || 'N/A'}. Please consider this information when providing advice.`;
+    }
+
 
     if (modelType === 'gemini') {
       const apiKey = process.env.GOOGLE_GENAI_API_KEY;
@@ -56,6 +77,7 @@ export async function POST(req: Request) {
           { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
           { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         ],
+        systemInstruction: { role: "system", parts: [{text: systemMessageContent}] }, // Add system instruction here
       });
 
       const formattedHistoryForGemini: ApiChatMessage[] = recentHistory.map((msg: { role: string; content: string }) => ({
@@ -66,7 +88,7 @@ export async function POST(req: Request) {
       console.log("API Route Info: Sending request to Gemini API with history:", JSON.stringify(formattedHistoryForGemini, null, 2));
       console.log("API Route Info: Sending new message to Gemini API:", message);
 
-      const chat = model.startChat({
+      const chat: ChatSession = model.startChat({
           history: formattedHistoryForGemini,
           generationConfig: {
               maxOutputTokens: 200, // Limiting output tokens
@@ -85,7 +107,6 @@ export async function POST(req: Request) {
           console.error("API Route Error: Failed to extract text using result.response.text() from Gemini:", textError.message);
           console.error("API Route Info: Full Gemini result.response object:", JSON.stringify(result.response, null, 2));
           botResponseContent = null; // Ensure it remains null if text extraction fails
-          // Do not throw here, let it be handled by the check below
         }
       } else {
         console.error("API Route Error: Gemini result or result.response is undefined or null.");
@@ -110,7 +131,7 @@ export async function POST(req: Request) {
       }));
 
       const messagesForOpenAI: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'system', content: 'You are BalanceBot, a friendly and helpful fitness assistant.' },
+        { role: 'system', content: systemMessageContent }, // Use the constructed system message
         ...formattedHistoryForGPT,
         { role: 'user', content: message }
       ];
@@ -144,7 +165,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error(`Error caught in /api/chat route (Model Type: ${modelTypeFromRequest || 'unknown'}):`, error);
-    // Attempt to get a more specific message from the error object
     let errorMessage = "An unexpected error occurred on the server.";
     if (error.message) {
         errorMessage = error.message;
@@ -152,7 +172,6 @@ export async function POST(req: Request) {
         errorMessage = error;
     }
     
-    // Special handling for JSON parsing errors in the request
     if (error instanceof SyntaxError && error.message.includes('JSON')) {
         console.error("API Route Error: Failed to parse request body as JSON.");
         return NextResponse.json({ error: "Invalid request format. Expected JSON." }, { status: 400 });
@@ -163,3 +182,4 @@ export async function POST(req: Request) {
   }
 }
 
+    

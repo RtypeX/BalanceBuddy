@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -11,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
-import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw, User } from 'lucide-react'; // Added User icon
+import { Trash2, Save, FilePlus2, FolderOpen, Rocket, ShieldCheck, RotateCcw, User } from 'lucide-react';
 
 // Define the structure for a chat message
 interface ChatMessage {
@@ -19,6 +17,17 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'error';
   content: string;
 }
+
+// Define the structure for profile data to be sent to API
+interface ProfileDataForAPI {
+  name?: string;
+  age?: number;
+  heightFt?: number;
+  heightIn?: number;
+  weightLbs?: number;
+  fitnessGoal?: 'Lose Weight' | 'Gain Weight' | 'Maintain';
+}
+
 
 // ModelType is always 'gemini' now
 type ModelType = 'gemini'; // Simplified, though API route can still handle 'gpt' if sent
@@ -62,6 +71,7 @@ const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 const REQUEST_TIMESTAMPS_KEY = 'balanceBotRequestTimestamps_Gemini'; // Single key for Gemini
 const SAVED_CHATS_KEY = 'balanceBotSavedChats';
 const SUBSCRIPTION_STATUS_KEY = 'balanceBotSubscriptionStatus';
+const PROFILE_DATA_KEY = 'profileData'; // Key for profile data in localStorage
 
 export default function BalanceBotPage() {
   const router = useRouter();
@@ -289,6 +299,26 @@ export default function BalanceBotPage() {
     setIsLoading(true);
     setInput('');
 
+    // Retrieve profile data from localStorage to send with the API request
+    let profileDataForAPI: ProfileDataForAPI | null = null;
+    const storedProfileData = localStorage.getItem(PROFILE_DATA_KEY);
+    if (storedProfileData) {
+        try {
+            const parsedProfile = JSON.parse(storedProfileData);
+            profileDataForAPI = {
+                name: parsedProfile.name,
+                age: parsedProfile.age,
+                heightFt: parsedProfile.heightFt,
+                heightIn: parsedProfile.heightIn,
+                weightLbs: parsedProfile.weightLbs,
+                fitnessGoal: parsedProfile.fitnessGoal,
+            };
+        } catch (e) {
+            console.error("Failed to parse profile data for API:", e);
+        }
+    }
+
+
     // Update request timestamps if not subscribed
     if (!isSubscribed) {
         const now = Date.now();
@@ -299,13 +329,13 @@ export default function BalanceBotPage() {
 
 
     try {
-      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI, modelType: 'gemini' }); // Always Gemini
+      console.log("Sending to /api/chat:", { message: trimmedInput, history: historyForAPI, modelType: 'gemini', profileData: profileDataForAPI });
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: trimmedInput, history: historyForAPI, modelType: 'gemini' }), // Hardcode gemini
+        body: JSON.stringify({ message: trimmedInput, history: historyForAPI, modelType: 'gemini', profileData: profileDataForAPI }),
       });
 
       console.log(`Received response status from /api/chat: ${response.status}`);
@@ -393,7 +423,7 @@ export default function BalanceBotPage() {
       setIsLoading(false);
     }
   };
-
+  // JSX return statement. Ensure this is the last part of the function body.
   return (
     <div className="flex flex-col items-center justify-start min-h-screen py-6 px-4">
        <div className="flex items-center justify-between p-4 w-full max-w-xl mb-4">
@@ -582,7 +612,3 @@ export default function BalanceBotPage() {
     </div>
   );
 }
-
-    
-
-
