@@ -317,7 +317,9 @@ export default function BalanceBotPage() {
           errorData = await response.json();
           errorMsg = errorData?.error || errorMsg;
           if (errorMsg.includes("API key missing")) {
-            errorMsg = `Server configuration error: Gemini API key is missing. Please check the .env file on the server.`;
+            errorMsg = `Server configuration error: Gemini API key is missing or invalid. Please check server setup.`;
+          } else if (errorMsg.toLowerCase().includes("could not read response body")) {
+            errorMsg = `The AI service (Gemini) returned an unreadable response. This might be a temporary issue with the service or an invalid API key. Please check server logs for details.`;
           }
           console.error("API Error Response (Parsed JSON):", errorData);
         } catch (e) {
@@ -326,6 +328,9 @@ export default function BalanceBotPage() {
                 const textResponse = await response.text();
                 console.error("Non-JSON error response body:", textResponse.substring(0, 500));
                  errorMsg = `Server error (${response.status}) for Gemini: ${textResponse.substring(0,100) || 'Could not retrieve details.'}`;
+                 if (textResponse.toLowerCase().includes("could not read response body")) {
+                    errorMsg = `The AI service (Gemini) returned an unreadable response. This might be a temporary issue with the service or an invalid API key. Please check server logs for details. (Raw text: ${textResponse.substring(0,50)})`;
+                 }
             } catch (textError) {
                 console.error("Failed to read error response body as text:", textError);
                 errorMsg = `Server error (${response.status}) for Gemini: Could not read response body.`;
@@ -579,4 +584,5 @@ export default function BalanceBotPage() {
 }
 
     
+
 
