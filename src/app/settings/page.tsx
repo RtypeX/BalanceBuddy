@@ -165,10 +165,10 @@ const SettingsPage = () => {
               </div>
             )}
             <Separator />
-            <Button variant="outline" onClick={() => toast({ title: "Billing History", description: "This is where billing history would appear."})}>
+            <Button variant="outline" onClick={() => router.push('/billing-history')}>
                 <History className="mr-2 h-4 w-4"/> View Billing History
             </Button>
-             <Button variant="outline" onClick={() => toast({ title: "Manage Payment Methods", description: "This is where payment methods would be managed."})}>
+             <Button variant="outline" onClick={() => router.push('/payment-methods')}>
                 <DollarSign className="mr-2 h-4 w-4"/> Manage Payment Methods
             </Button>
           </CardContent>
