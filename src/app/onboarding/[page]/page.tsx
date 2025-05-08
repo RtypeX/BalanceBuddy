@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,24 +6,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // Added useParams
 import React, { useState, type FC, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { getFirebase } from "@/lib/firebaseClient"; 
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { differenceInYears, isValid, parse } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { getFirebase } from "@/lib/firebaseClient"; 
+import { differenceInYears, isValid } from 'date-fns';
 
 
 interface OnboardingPageProps {
-  params: {
+  params: { // This comes from Next.js for dynamic routes
     page: string;
   };
 }
 
+type OnboardingStep = 'signup' | 'personal-info' | 'profile';
+const OnboardingSteps: OnboardingStep[] = ['signup', 'personal-info', 'profile'];
+
+
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: Record<string, string | number | undefined>; 
+  formData: Record<string, string | number | undefined>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -44,56 +49,88 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
   }
 };
 
-const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
+const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) => {
   const router = useRouter();
-  const getInitialPage = () => {
-    if (typeof window !== 'undefined') {
-      const storedPage = localStorage.getItem('onboardingPage');
-      if (storedPage && OnboardingSteps[parseInt(storedPage, 10) - 1]) {
-        if (params.page && params.page !== storedPage) {
-            localStorage.setItem('onboardingPage', params.page);
-            return parseInt(params.page, 10);
-        }
-        return parseInt(storedPage, 10);
+  const clientRouteParams = useParams(); 
+  const { toast } = useToast();
+  const firebase = getFirebase();
+
+  const getInitialPageNumber = (): number => {
+    let pageNumStr: string | string[] | undefined = clientRouteParams?.page;
+
+    // If clientRouteParams.page is not yet available or is an array, try serverSideParams
+    if (!pageNumStr || Array.isArray(pageNumStr)) {
+      pageNumStr = serverSideParams?.page;
+    }
+    
+    // If pageNumStr is still an array (should not happen with this setup ideally), take the first element
+    if (Array.isArray(pageNumStr)) {
+      pageNumStr = pageNumStr[0];
+    }
+
+    if (typeof pageNumStr === 'string') {
+      const num = parseInt(pageNumStr, 10);
+      if (!isNaN(num) && OnboardingSteps[num - 1]) {
+        return num;
       }
     }
-    const paramPageNum = parseInt(params.page, 10);
-    if (!isNaN(paramPageNum) && OnboardingSteps[paramPageNum - 1]) {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('onboardingPage', String(paramPageNum));
+
+    if (typeof window !== 'undefined') {
+        const storedPage = localStorage.getItem('onboardingPage');
+        if (storedPage) {
+            const num = parseInt(storedPage, 10);
+            if (!isNaN(num) && OnboardingSteps[num-1]) return num;
         }
-        return paramPageNum;
     }
     return 1; 
   };
 
-  const [currentPageNumber, setCurrentPageNumber] = useState<number>(getInitialPage());
+
+  const [currentPageNumber, setCurrentPageNumber] = useState<number>(getInitialPageNumber());
+
 
   useEffect(() => {
     const currentPath = `/onboarding/${currentPageNumber}`;
-    if (window.location.pathname !== currentPath) {
+    if (typeof window !== 'undefined' && window.location.pathname !== currentPath) {
       router.replace(currentPath, { scroll: false });
     }
-    localStorage.setItem('onboardingPage', String(currentPageNumber));
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('onboardingPage', String(currentPageNumber));
+    }
   }, [currentPageNumber, router]);
 
   useEffect(() => {
-    const paramPageNum = parseInt(params.page, 10);
-    if (!isNaN(paramPageNum) && paramPageNum !== currentPageNumber && OnboardingSteps[paramPageNum -1]) {
-      setCurrentPageNumber(paramPageNum);
-    } else if (isNaN(paramPageNum) || !OnboardingSteps[paramPageNum-1]) {
-      // If param is invalid, reset to a valid page, potentially the initial page.
-      // This avoids an infinite loop if params.page is consistently invalid.
-      const validInitialPage = getInitialPage();
-      if (currentPageNumber !== validInitialPage) {
-        setCurrentPageNumber(validInitialPage);
+    let pageNumFromRoute: number | undefined = undefined;
+    let pageParamSource: string | string[] | undefined = clientRouteParams?.page;
+
+    if (!pageParamSource || Array.isArray(pageParamSource)) {
+        pageParamSource = serverSideParams?.page;
+    }
+    if (Array.isArray(pageParamSource)) {
+        pageParamSource = pageParamSource[0];
+    }
+
+
+    if (typeof pageParamSource === 'string') {
+      const num = parseInt(pageParamSource, 10);
+      if (!isNaN(num) && OnboardingSteps[num - 1]) {
+        pageNumFromRoute = num;
       }
     }
-  }, [params.page]); 
+
+    if (pageNumFromRoute !== undefined && pageNumFromRoute !== currentPageNumber) {
+      setCurrentPageNumber(pageNumFromRoute);
+    } else if (pageNumFromRoute === undefined && (clientRouteParams?.page || serverSideParams?.page)) {
+        // URL has a page param, but it's invalid
+        const safePage = 1; // Default to 1 if URL param is bad
+        if (safePage !== currentPageNumber) {
+            setCurrentPageNumber(safePage); 
+        }
+    }
+  }, [clientRouteParams, serverSideParams, currentPageNumber, router]);
+
 
   const currentStep = OnboardingSteps[currentPageNumber - 1];
-  const { toast } = useToast();
-  const firebase = getFirebase();
 
   useEffect(() => {
     const userStartedOnboarding = localStorage.getItem('onboardingUserEmail');
@@ -122,9 +159,9 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     heightFt: '',
     heightIn: '',
     weightLbs: '',
-    birthMonth: '', 
-    birthDay: '',   
-    birthYear: '',  
+    birthMonth: '',
+    birthDay: '',
+    birthYear: '',
   });
 
   const totalPages = OnboardingSteps.length;
@@ -133,7 +170,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const handleNext = () => {
     if (currentPageNumber < totalPages) {
       const nextPage = currentPageNumber + 1;
-      setCurrentPageNumber(nextPage);
+      setCurrentPageNumber(nextPage); 
     } else {
       completeSignUp();
     }
@@ -142,22 +179,20 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   const handleBack = () => {
     if (currentPageNumber > 1) {
       const prevPage = currentPageNumber - 1;
-      setCurrentPageNumber(prevPage);
+      setCurrentPageNumber(prevPage); 
     } else {
       localStorage.removeItem('onboardingPage');
-      localStorage.removeItem('onboardingUserEmail'); 
+      localStorage.removeItem('onboardingUserEmail');
       router.push('/');
     }
   };
 
  const completeSignUp = async (): Promise<void> => {
-    // Ensure Firebase is initialized
     if (!firebase.app || !firebase.auth || !firebase.db) {
         toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
 
-    // Check for empty strings before parsing date components
     if (!formData.birthMonth?.trim() || !formData.birthDay?.trim() || !formData.birthYear?.trim()) {
         toast({ variant: "destructive", title: 'Missing Date of Birth', description: 'Please enter your complete date of birth (month, day, and year).' });
         return;
@@ -167,31 +202,26 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     const day = parseInt(formData.birthDay, 10);
     const year = parseInt(formData.birthYear, 10);
 
-    // Validate parsed numbers and ranges for date components
     if (isNaN(month) || month < 1 || month > 12 ||
-        isNaN(day) || day < 1 || day > 31 || 
+        isNaN(day) || day < 1 || day > 31 ||
         isNaN(year) || year < (new Date().getFullYear() - 100) || year > (new Date().getFullYear() - 16)) {
         toast({ variant: "destructive", title: 'Invalid Date of Birth Format', description: 'Please enter a valid month (1-12), day (1-31), and year (you must be 16-100 years old).' });
         return;
     }
 
-    // Construct date object - month is 0-indexed for Date constructor
     const dateOfBirth = new Date(year, month - 1, day);
 
-    // Validate the constructed date (e.g., Feb 30 is invalid)
     if (!isValid(dateOfBirth) || dateOfBirth.getFullYear() !== year || dateOfBirth.getMonth() !== month - 1 || dateOfBirth.getDate() !== day) {
          toast({ variant: "destructive", title: 'Invalid Calendar Date', description: 'The date of birth entered is not a valid calendar date (e.g., February 30th).' });
         return;
     }
 
-    // Validate age
     const ageNum = differenceInYears(new Date(), dateOfBirth);
     if (ageNum < 16 || ageNum > 100) {
       toast({ variant: "destructive", title: 'Age Requirement Not Met', description: 'You must be between 16 and 100 years old to sign up.' });
       return;
     }
 
-    // Validate other fields (name, email, password, height, weight)
     if (!formData.name.trim()) {
         toast({ variant: "destructive", title: 'Missing Name', description: 'Please enter your name.' });
         return;
@@ -200,11 +230,11 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         toast({ variant: "destructive", title: 'Missing Credentials', description: 'Email and password are required.' });
         return;
     }
-    if (formData.password.length < 6) { 
+    if (formData.password.length < 6) {
         toast({ variant: "destructive", title: 'Weak Password', description: 'Password must be at least 6 characters long.' });
         return;
     }
-    
+
     const heightFtNum = parseInt(formData.heightFt, 10);
     const heightInNum = parseInt(formData.heightIn, 10);
     const weightLbsNum = parseFloat(formData.weightLbs);
@@ -219,8 +249,8 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     }
 
     try {
-      const auth = getAuth(firebase.app); 
-      const db = getFirestore(firebase.app); 
+      const auth = getAuth(firebase.app);
+      const db = getFirestore(firebase.app);
 
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
@@ -232,16 +262,16 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
       await setDoc(doc(db, "users", user.uid), {
         name: formData.name,
         email: formData.email,
-        dateOfBirth: dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD
-        age: ageNum, // Store calculated age
+        dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+        age: ageNum,
         heightFt: heightFtNum,
         heightIn: heightInNum,
         weightLbs: weightLbsNum,
-        fitnessGoal: 'Maintain', // Default fitness goal
+        fitnessGoal: 'Maintain',
       });
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
-      localStorage.removeItem('onboardingPage'); 
+      localStorage.removeItem('onboardingPage');
       localStorage.removeItem('onboardingUserEmail');
 
       toast({
@@ -249,7 +279,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         title: 'Signup successful',
         description: 'Your profile has been created.',
       });
-      router.push('/home'); 
+      router.push('/home');
     } catch (error: any) {
       let errorMessage = "An unknown error occurred during signup.";
       if (error.code) {
@@ -275,7 +305,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         title: 'Sign up failed',
         description: errorMessage,
       });
-      console.error("Signup Error Details:", error); // Log full error for debugging
+      console.error("Signup Error Details:", error);
     }
   };
 
@@ -340,7 +370,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           placeholder="Create a strong password"
           required
-          minLength={6} 
+          minLength={6}
           className="mt-1"
         />
       </div>
@@ -483,6 +513,4 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
 };
 
 export default OnboardingPage;
-
-const OnboardingSteps = ['signup', 'personal-info', 'profile'];
 
