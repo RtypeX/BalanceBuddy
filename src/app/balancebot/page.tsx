@@ -51,7 +51,7 @@ const renderMarkdown = (text: string): { __html: string } => {
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   // Convert lists (simple unordered list)
   html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
-  html = html.replace(/^(<li>.*<\/li>\s*)+/gim, '<ul>$&</ul>'); // Wrap LIs in UL
+  html = html.replace(/(<li>.*<\/li>\s*)+/gim, '<ul>$&</ul>'); // Wrap LIs in UL
 
   // Convert newlines to <p> tags for better spacing, but not inside <ul> or <h3>
   const blocks = html.split(/(<\/?(?:ul|h3)[^>]*>)/g);
@@ -551,7 +551,7 @@ export default function BalanceBotPage() {
                              height={32}
                              className="rounded-full object-cover"
                            />
-                            {/* <AvatarFallback>BB</AvatarFallback> */}
+                            <AvatarFallback>BB</AvatarFallback>
                         </Avatar>
                     <div className="bg-muted text-muted-foreground rounded-xl px-4 py-2 text-sm shadow-sm animate-pulse rounded-bl-none">
                         Typing...
@@ -611,7 +611,7 @@ export default function BalanceBotPage() {
               </ul>
               <p className="text-lg font-semibold text-center">$9.99 / month (Demo)</p>
               <Button onClick={handleSubscription} className="w-full">
-                Subscribe Now & Unlock All Features
+                Subscribe Now &amp; Unlock All Features
               </Button>
               <Button variant="outline" onClick={() => setShowSubscriptionModal(false)} className="w-full mt-2">
                 Maybe Later
