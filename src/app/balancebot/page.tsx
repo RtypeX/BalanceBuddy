@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -53,11 +52,13 @@ const renderMarkdown = (text: string): { __html: string } => {
   html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
   html = html.replace(/^(<li>.*<\/li>\s*)+/gim, '<ul>$&</ul>'); // Wrap LIs in UL
 
-  // Convert newlines to <br> tags for better spacing, but not inside <ul> or <h3>
+  // Convert newlines to <p> tags for better spacing, but not inside <ul> or <h3>
   const blocks = html.split(/(<\/?(?:ul|h3)[^>]*>)/g);
   html = blocks.map((block, index) => {
     if (index % 2 === 0 && !block.match(/<\/?(?:ul|h3)[^>]*>/)) {
-      return block.split('\n').map(p => p.trim() ? `<p>${p.trim()}</p>` : '').join('');
+      // Split by newline, wrap non-empty lines in <p>, then join.
+      // This aims to treat paragraphs separated by newlines correctly.
+      return block.split('\n').filter(p => p.trim()).map(p => `<p>${p.trim()}</p>`).join('');
     }
     return block;
   }).join('');
@@ -76,6 +77,7 @@ const PROFILE_DATA_KEY = 'profileData'; // Key for profile data in localStorage
 
 export default function BalanceBotPage() {
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -162,6 +164,16 @@ export default function BalanceBotPage() {
       );
     }
   }, [requestTimestamps, isSubscribed]);
+
+  // Effect to close modal on route change
+  useEffect(() => {
+    if (showSubscriptionModal) {
+      setShowSubscriptionModal(false);
+    }
+    // Adding showSubscriptionModal to dependencies to only run if it's true,
+    // though pathname is the primary trigger for closing on navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
 
   const scrollToBottom = () => {
