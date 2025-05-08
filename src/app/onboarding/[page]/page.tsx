@@ -9,7 +9,7 @@ import { useParams, useRouter } from 'next/navigation'; // Added useParams
 import React, { useState, type FC, useEffect } from 'react';
 // Removed Firebase Auth and Firestore direct imports, will use getFirebase()
 import { Button } from '@/components/ui/button';
-import { getFirebase } from "@/lib/firebaseClient"; 
+import { getFirebase } from "@/lib/firebaseClient";
 import { differenceInYears, isValid } from 'date-fns';
 import { createUserWithEmailAndPassword } from 'firebase/auth'; // Explicit import
 // import { doc, setDoc } from 'firebase/firestore'; // Explicit import - Temporarily commented out as per user request
@@ -50,9 +50,9 @@ const OnboardingStepComponent: React.FC<OnboardingStepProps> = ({ step, formData
 
 const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) => {
   const router = useRouter();
-  const clientRouteParams = useParams(); 
+  const clientRouteParams = useParams();
   const { toast } = useToast();
-  const firebaseInstances = getFirebase(); 
+  const firebaseInstances = getFirebase();
 
   const getInitialPageNumber = (): number => {
     let pageNumStr: string | string[] | undefined = clientRouteParams?.page;
@@ -60,7 +60,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     if (!pageNumStr || Array.isArray(pageNumStr)) {
       pageNumStr = serverSideParams?.page;
     }
-    
+
     if (Array.isArray(pageNumStr)) {
       pageNumStr = pageNumStr[0];
     }
@@ -79,7 +79,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
             if (!isNaN(num) && OnboardingSteps[num-1]) return num;
         }
     }
-    return 1; 
+    return 1;
   };
 
 
@@ -118,9 +118,9 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     if (pageNumFromRoute !== undefined && pageNumFromRoute !== currentPageNumber) {
       setCurrentPageNumber(pageNumFromRoute);
     } else if (pageNumFromRoute === undefined && (clientRouteParams?.page || serverSideParams?.page)) {
-        const safePage = 1; 
+        const safePage = 1;
         if (safePage !== currentPageNumber) {
-            setCurrentPageNumber(safePage); 
+            setCurrentPageNumber(safePage);
         }
     }
   }, [clientRouteParams, serverSideParams, currentPageNumber, router]);
@@ -148,17 +148,36 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     }
   };
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: '',
-    heightFt: '',
-    heightIn: '',
-    weightLbs: '',
-    birthMonth: '',
-    birthDay: '',
-    birthYear: '',
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const storedFormData = localStorage.getItem('onboardingFormData');
+      if (storedFormData) {
+        try {
+          return JSON.parse(storedFormData);
+        } catch (e) {
+          console.error("Failed to parse onboardingFormData from localStorage", e);
+        }
+      }
+    }
+    return {
+      email: '',
+      password: '',
+      name: '',
+      heightFt: '',
+      heightIn: '',
+      weightLbs: '',
+      birthMonth: '',
+      birthDay: '',
+      birthYear: '',
+    };
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onboardingFormData', JSON.stringify(formData));
+    }
+  }, [formData]);
+
 
   const totalPages = OnboardingSteps.length;
   const progress = (currentPageNumber / totalPages) * 100;
@@ -166,7 +185,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   const handleNext = () => {
     if (currentPageNumber < totalPages) {
       const nextPage = currentPageNumber + 1;
-      setCurrentPageNumber(nextPage); 
+      setCurrentPageNumber(nextPage);
     } else {
       completeSignUp();
     }
@@ -175,10 +194,11 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   const handleBack = () => {
     if (currentPageNumber > 1) {
       const prevPage = currentPageNumber - 1;
-      setCurrentPageNumber(prevPage); 
+      setCurrentPageNumber(prevPage);
     } else {
       localStorage.removeItem('onboardingPage');
       localStorage.removeItem('onboardingUserEmail');
+      localStorage.removeItem('onboardingFormData'); // Clear form data on cancel
       router.push('/');
     }
   };
@@ -191,27 +211,27 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     }
 
     // Date of birth validation
-    const monthIsEmpty = formData.birthMonth == null || formData.birthMonth.trim() === '';
-    const dayIsEmpty = formData.birthDay == null || formData.birthDay.trim() === '';
-    const yearIsEmpty = formData.birthYear == null || formData.birthYear.trim() === '';
+    const monthIsEmpty = formData.birthMonth == null || String(formData.birthMonth).trim() === '';
+    const dayIsEmpty = formData.birthDay == null || String(formData.birthDay).trim() === '';
+    const yearIsEmpty = formData.birthYear == null || String(formData.birthYear).trim() === '';
 
     if (monthIsEmpty || dayIsEmpty || yearIsEmpty) {
         let missingFields = [];
         if (monthIsEmpty) missingFields.push("month");
         if (dayIsEmpty) missingFields.push("day");
         if (yearIsEmpty) missingFields.push("year");
-        
-        toast({ 
-            variant: "destructive", 
-            title: 'Missing Date of Birth Details', 
-            description: `Please enter your full date of birth. Missing: ${missingFields.join(', ')}.` 
+
+        toast({
+            variant: "destructive",
+            title: 'Missing Date of Birth Details',
+            description: `Please enter your full date of birth. Missing: ${missingFields.join(', ')}.`
         });
         return;
     }
 
-    const month = parseInt(formData.birthMonth, 10);
-    const day = parseInt(formData.birthDay, 10);
-    const year = parseInt(formData.birthYear, 10);
+    const month = parseInt(String(formData.birthMonth), 10);
+    const day = parseInt(String(formData.birthDay), 10);
+    const year = parseInt(String(formData.birthYear), 10);
 
     if (isNaN(month) || month < 1 || month > 12 ||
         isNaN(day) || day < 1 || day > 31 ||
@@ -247,9 +267,9 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
         return;
     }
 
-    const heightFtNum = parseInt(formData.heightFt, 10);
-    const heightInNum = parseInt(formData.heightIn, 10);
-    const weightLbsNum = parseFloat(formData.weightLbs);
+    const heightFtNum = parseInt(String(formData.heightFt), 10);
+    const heightInNum = parseInt(String(formData.heightIn), 10);
+    const weightLbsNum = parseFloat(String(formData.weightLbs));
 
     if (isNaN(heightFtNum) || heightFtNum < 0 || isNaN(heightInNum) || heightInNum < 0 || heightInNum >= 12) {
         toast({ variant: "destructive", title: 'Invalid Height', description: 'Please enter valid feet and inches (inches 0-11).' });
@@ -267,7 +287,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
       if (!user) {
         throw new Error("User creation failed at Firebase Auth level.");
       }
-      
+
       // Temporarily skip saving to Firestore as per user request
       // if (firebaseInstances.db) {
       //   await setDoc(doc(firebaseInstances.db, "users", user.uid), {
@@ -300,6 +320,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
 
       localStorage.removeItem('onboardingPage');
       localStorage.removeItem('onboardingUserEmail');
+      localStorage.removeItem('onboardingFormData'); // Clear form data on success
 
       toast({
         id: "user-created",
@@ -368,7 +389,7 @@ interface SignupFormProps {
 const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newEmail = e.target.value;
-    setFormData({ ...formData, email: newEmail });
+    setFormData((prev: Record<string, string>) => ({ ...prev, email: newEmail }));
     if (typeof window !== 'undefined') {
       localStorage.setItem('onboardingUserEmail', newEmail);
     }
@@ -394,7 +415,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
           type="password"
           id="password"
           value={formData.password || ''}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))}
           placeholder="Create a strong password"
           required
           minLength={6}
@@ -407,7 +428,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
           type="text"
           id="name"
           value={formData.name || ''}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, name: e.target.value }))}
           placeholder="Your Full Name"
           required
           className="mt-1"
@@ -438,7 +459,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
               type="number"
               id="birthMonth"
               value={formData.birthMonth || ''}
-              onChange={(e) => setFormData({ ...formData, birthMonth: e.target.value })}
+              onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, birthMonth: e.target.value }))}
               placeholder="MM"
               min="1"
               max="12"
@@ -452,7 +473,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
               type="number"
               id="birthDay"
               value={formData.birthDay || ''}
-              onChange={(e) => setFormData({ ...formData, birthDay: e.target.value })}
+              onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, birthDay: e.target.value }))}
               placeholder="DD"
               min="1"
               max="31"
@@ -466,7 +487,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
               type="number"
               id="birthYear"
               value={formData.birthYear || ''}
-              onChange={(e) => setFormData({ ...formData, birthYear: e.target.value })}
+              onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, birthYear: e.target.value }))}
               placeholder="YYYY"
               min={minYear}
               max={maxYear}
@@ -498,7 +519,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                   type="number"
                   id="heightFt"
                   value={formData.heightFt || ''}
-                  onChange={(e) => setFormData({ ...formData, heightFt: e.target.value })}
+                  onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, heightFt: e.target.value }))}
                   placeholder="ft"
                   min="0"
                   required
@@ -511,7 +532,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                       type="number"
                       id="heightIn"
                       value={formData.heightIn || ''}
-                      onChange={(e) => setFormData({ ...formData, heightIn: e.target.value })}
+                      onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, heightIn: e.target.value }))}
                       placeholder="in"
                       min="0"
                       max="11"
@@ -527,7 +548,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
               type="number"
               id="weightLbs"
               value={formData.weightLbs || ''}
-              onChange={(e) => setFormData({ ...formData, weightLbs: e.target.value })}
+              onChange={(e) => setFormData((prev: Record<string, string>) => ({ ...prev, weightLbs: e.target.value }))}
               placeholder="Your Weight in lbs"
               required
               min="0"
