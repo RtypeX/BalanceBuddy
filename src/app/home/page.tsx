@@ -16,6 +16,8 @@ import FastingCalendar from "@/components/FastingCalendar";
 import Link from 'next/link';
 import { Card, CardContent } from "@/components/ui/card"; // Import Card and CardContent
 import { BarChart3, Dumbbell, FileText, Bot, Calendar, Weight, Utensils, Bed, SettingsIcon } from 'lucide-react'; // Removed User, Added Bed and SettingsIcon
+import { getFirebase } from '@/lib/firebaseClient'; // Import getFirebase
+import { signOut } from 'firebase/auth'; // Import signOut
 
 export default function Home() {
   const router = useRouter();
@@ -28,22 +30,39 @@ export default function Home() {
     // }
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user'); // Clear user data
-    localStorage.removeItem('profileData'); // Clear profile data
-    localStorage.removeItem('fastingLog'); // Clear fasting log
-    localStorage.removeItem('fastingStartTime'); // Clear active fast start time
-    localStorage.removeItem('fastingGoalHours'); // Clear fasting goal
-    localStorage.removeItem('workoutLogs'); // Clear workout logs
-    localStorage.removeItem('weightLog'); // Clear weight log
-    localStorage.removeItem('weightGoal'); // Clear weight goal
-    localStorage.removeItem('startWeight'); // Clear start weight
-    localStorage.removeItem('nutritionLog'); // Clear nutrition log
-    localStorage.removeItem('sleepLog'); // Clear sleep log
+  const clearAllUserData = () => {
+    // Clear all relevant localStorage items
+    localStorage.removeItem('user');
+    localStorage.removeItem('profileData');
+    localStorage.removeItem('fastingLog');
+    localStorage.removeItem('fastingStartTime');
+    localStorage.removeItem('fastingGoalHours');
+    localStorage.removeItem('workoutLogs');
+    localStorage.removeItem('weightLog');
+    localStorage.removeItem('weightGoal');
+    localStorage.removeItem('startWeight');
+    localStorage.removeItem('nutritionLog');
+    localStorage.removeItem('sleepLog');
     localStorage.removeItem('balanceBotSubscriptionStatus');
     localStorage.removeItem('balanceBotNotificationPreferences');
     localStorage.removeItem('balanceBotRequestTimestamps_Gemini');
     localStorage.removeItem('balanceBotSavedChats');
+    // Add any other keys used by your application features
+    // e.g., localStorage.removeItem('onboardingFormData');
+    // e.g., localStorage.removeItem('onboardingPage');
+    // e.g., localStorage.removeItem('onboardingUserEmail');
+  };
+
+
+  const handleLogout = async () => {
+    const { auth } = getFirebase();
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+      // Still proceed with local cleanup
+    }
+    clearAllUserData();
     router.push('/'); // Redirect to login/start screen
   };
 
@@ -191,5 +210,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

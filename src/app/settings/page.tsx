@@ -11,7 +11,21 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
-import { DollarSign, CreditCard, Shield, Bell, LogOut, UserCircle, History, FileText, Edit3 } from 'lucide-react'; // Added Edit3
+import { DollarSign, CreditCard, Shield, Bell, LogOut, UserCircle, History, FileText, Edit3, Trash2 } from 'lucide-react'; // Added Trash2
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { getFirebase } from '@/lib/firebaseClient';
+import { deleteUser, signOut } from 'firebase/auth';
+
 
 const SUBSCRIPTION_STATUS_KEY = 'balanceBotSubscriptionStatus'; // Same key as BalanceBot page
 const NOTIFICATION_PREFERENCES_KEY = 'balanceBotNotificationPreferences';
@@ -35,6 +49,7 @@ const SettingsPage = () => {
     promotionalOffers: false,
   });
   const [userEmail, setUserEmail] = useState<string>('loading...');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
 
   useEffect(() => {
@@ -94,23 +109,78 @@ const SettingsPage = () => {
     toast({ title: "Notification Preferences Updated" });
   };
 
-  const handleLogout = () => {
+  const clearAllUserData = () => {
     // Clear all relevant localStorage items
     localStorage.removeItem('user');
     localStorage.removeItem('profileData');
     localStorage.removeItem(SUBSCRIPTION_STATUS_KEY);
     localStorage.removeItem(NOTIFICATION_PREFERENCES_KEY);
-    // Add other keys used by features like fasting, workout logs etc.
     localStorage.removeItem('fastingLog');
     localStorage.removeItem('fastingStartTime');
     localStorage.removeItem('fastingGoalHours');
     localStorage.removeItem('workoutLogs');
-    localStorage.removeItem('balanceBotRequestTimestamps_Gemini'); // Clear rate limit timestamps
+    localStorage.removeItem('weightLog');
+    localStorage.removeItem('weightGoal');
+    localStorage.removeItem('startWeight');
+    localStorage.removeItem('nutritionLog');
+    localStorage.removeItem('sleepLog');
+    localStorage.removeItem('balanceBotRequestTimestamps_Gemini');
     localStorage.removeItem('balanceBotSavedChats');
+    // Add any other keys used by your application features
+    // e.g., localStorage.removeItem('onboardingFormData');
+    // e.g., localStorage.removeItem('onboardingPage');
+    // e.g., localStorage.removeItem('onboardingUserEmail');
+  };
 
+  const handleLogout = async () => {
+    const { auth } = getFirebase();
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+      // Still proceed with local cleanup
+    }
+    clearAllUserData();
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     router.push('/'); // Redirect to the start page
   };
+
+  const handleDeleteAccount = async () => {
+    const { auth } = getFirebase();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Error", description: "No user is currently logged in to delete." });
+      setIsDeleteDialogOpen(false);
+      return;
+    }
+
+    // For demo users, just clear local storage and redirect
+    if (currentUser.email === 'demo@example.com' || currentUser.uid === 'demo') {
+        clearAllUserData();
+        toast({ title: "Demo Account Removed", description: "Demo user data has been cleared." });
+        router.push('/');
+        setIsDeleteDialogOpen(false);
+        return;
+    }
+
+    try {
+      await deleteUser(currentUser);
+      clearAllUserData();
+      toast({ title: "Account Deleted", description: "Your account has been permanently deleted." });
+      router.push('/');
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      let errorMessage = "Failed to delete account. Please try again.";
+      if (error.code === 'auth/requires-recent-login') {
+        errorMessage = "This operation is sensitive and requires recent authentication. Please log out and log back in before trying again.";
+      }
+      toast({ variant: "destructive", title: "Deletion Failed", description: errorMessage });
+    } finally {
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen py-6 px-4">
@@ -230,15 +300,38 @@ const SettingsPage = () => {
             <Button variant="outline" onClick={() => router.push('/terms-of-service')}>
                 <FileText className="mr-2 h-4 w-4"/> View Terms of Service
             </Button>
-            <Button variant="destructive" className="w-full mt-4" onClick={() => toast({title: "Delete Account", description: "Account deletion is a critical action. This is a placeholder.", variant: "destructive"})}>
-                Delete Account
-            </Button>
-            <p className="text-xs text-destructive-foreground bg-destructive p-2 rounded-md mt-1">Warning: Deleting your account is permanent and cannot be undone.</p>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full mt-4">
+                    <Trash2 className="mr-2 h-4 w-4"/> Delete Account
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your
+                    account and remove your data from our servers (if applicable).
+                    All locally stored data (chat history, logs, etc.) will also be cleared.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                    Yes, delete account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <p className="text-xs text-muted-foreground p-2 rounded-md mt-1 text-center">
+              Warning: Deleting your account is permanent.
+            </p>
           </CardContent>
         </Card>
 
         {/* Logout Button */}
-        <Button variant="destructive" className="w-full" onClick={handleLogout}>
+        <Button variant="outline" className="w-full" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4"/> Logout
         </Button>
       </div>
