@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,17 +52,15 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   const router = useRouter();
   const clientRouteParams = useParams(); 
   const { toast } = useToast();
-  const { app, auth: firebaseAuthInstance, db: firestoreInstance } = getFirebase(); // Destructure directly
+  const { app, auth: firebaseAuthInstance, db: firestoreInstance } = getFirebase(); 
 
   const getInitialPageNumber = (): number => {
     let pageNumStr: string | string[] | undefined = clientRouteParams?.page;
 
-    // If clientRouteParams.page is not yet available or is an array, try serverSideParams
     if (!pageNumStr || Array.isArray(pageNumStr)) {
       pageNumStr = serverSideParams?.page;
     }
     
-    // If pageNumStr is still an array (should not happen with this setup ideally), take the first element
     if (Array.isArray(pageNumStr)) {
       pageNumStr = pageNumStr[0];
     }
@@ -121,8 +118,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     if (pageNumFromRoute !== undefined && pageNumFromRoute !== currentPageNumber) {
       setCurrentPageNumber(pageNumFromRoute);
     } else if (pageNumFromRoute === undefined && (clientRouteParams?.page || serverSideParams?.page)) {
-        // URL has a page param, but it's invalid
-        const safePage = 1; // Default to 1 if URL param is bad
+        const safePage = 1; 
         if (safePage !== currentPageNumber) {
             setCurrentPageNumber(safePage); 
         }
@@ -188,13 +184,21 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   };
 
  const completeSignUp = async (): Promise<void> => {
-    if (!app || !firebaseAuthInstance || !firestoreInstance) { // Check the destructured instances
+    if (!app || !firebaseAuthInstance || !firestoreInstance) { 
         toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
 
-    if (!formData.birthMonth?.trim() || !formData.birthDay?.trim() || !formData.birthYear?.trim()) {
-        toast({ variant: "destructive", title: 'Missing Date of Birth', description: 'Please enter your complete date of birth (month, day, and year).' });
+    if (!formData.birthMonth?.trim()) {
+        toast({ variant: "destructive", title: 'Missing Birth Month', description: 'Please enter the month of your birth.' });
+        return;
+    }
+    if (!formData.birthDay?.trim()) {
+        toast({ variant: "destructive", title: 'Missing Birth Day', description: 'Please enter the day of your birth.' });
+        return;
+    }
+    if (!formData.birthYear?.trim()) {
+        toast({ variant: "destructive", title: 'Missing Birth Year', description: 'Please enter the year of your birth.' });
         return;
     }
 
@@ -249,7 +253,6 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     }
 
     try {
-      // Use the destructured instances
       const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, formData.email, formData.password);
       const user = userCredential.user;
 
@@ -511,4 +514,3 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
 };
 
 export default OnboardingPage;
-
