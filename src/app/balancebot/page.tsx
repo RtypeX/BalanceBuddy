@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -170,10 +171,7 @@ export default function BalanceBotPage() {
     if (showSubscriptionModal) {
       setShowSubscriptionModal(false);
     }
-    // Adding showSubscriptionModal to dependencies to only run if it's true,
-    // though pathname is the primary trigger for closing on navigation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, showSubscriptionModal]);
 
 
   const scrollToBottom = () => {
