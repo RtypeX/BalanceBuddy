@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +8,12 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation'; // Added useParams
 import React, { useState, type FC, useEffect } from 'react';
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-// Removed Firestore imports as we are not saving to Firestore for now
-// import { getFirestore, doc, setDoc } from "firebase/firestore";
+// Removed Firebase Auth and Firestore direct imports, will use getFirebase()
 import { Button } from '@/components/ui/button';
 import { getFirebase } from "@/lib/firebaseClient"; 
 import { differenceInYears, isValid } from 'date-fns';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Explicit import
+import { doc, setDoc } from 'firebase/firestore'; // Explicit import
 
 
 interface OnboardingPageProps {
@@ -27,7 +28,7 @@ const OnboardingSteps: OnboardingStep[] = ['signup', 'personal-info', 'profile']
 
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: Record<string, string | number | undefined>;
+  formData: Record<string, string>; // Changed from string | number | undefined to string for form fields
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -186,14 +187,27 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
 
  const completeSignUp = async (): Promise<void> => {
     // Check if firebase auth instance is available
-    if (!firebaseInstances.auth) { 
-        toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase Auth is not configured correctly. Please try again later.' });
+    if (!firebaseInstances.auth || !firebaseInstances.db) { 
+        toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
 
     // Date of birth validation
-    if (!formData.birthMonth?.trim() || !formData.birthDay?.trim() || !formData.birthYear?.trim()) {
-        toast({ variant: "destructive", title: 'Missing Date of Birth', description: 'Please enter your full date of birth.' });
+    const monthIsEmpty = formData.birthMonth == null || formData.birthMonth.trim() === '';
+    const dayIsEmpty = formData.birthDay == null || formData.birthDay.trim() === '';
+    const yearIsEmpty = formData.birthYear == null || formData.birthYear.trim() === '';
+
+    if (monthIsEmpty || dayIsEmpty || yearIsEmpty) {
+        let missingFields = [];
+        if (monthIsEmpty) missingFields.push("month");
+        if (dayIsEmpty) missingFields.push("day");
+        if (yearIsEmpty) missingFields.push("year");
+        
+        toast({ 
+            variant: "destructive", 
+            title: 'Missing Date of Birth Details', 
+            description: `Please enter your full date of birth. Missing: ${missingFields.join(', ')}.` 
+        });
         return;
     }
 
@@ -255,24 +269,21 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
       if (!user) {
         throw new Error("User creation failed at Firebase Auth level.");
       }
-
+      
       // User data will NOT be saved to Firestore for now.
-      // If you need to store this data later, you would add Firestore `setDoc` call here.
-      // For example:
-      // if (firebaseInstances.db) {
-      //   await setDoc(doc(firebaseInstances.db, "users", user.uid), {
-      //     name: formData.name,
-      //     email: formData.email,
-      //     dateOfBirth: dateOfBirth.toISOString().split('T')[0],
-      //     age: ageNum,
-      //     heightFt: heightFtNum,
-      //     heightIn: heightInNum,
-      //     weightLbs: weightLbsNum,
-      //     fitnessGoal: 'Maintain', // Default
-      //   });
-      // } else {
-      //   console.warn("Firestore DB instance is not available. Skipping data save to Firestore.");
-      // }
+      // console.log("Demo Mode: User profile data not saved to Firestore.");
+      // To enable saving to Firestore:
+      // await setDoc(doc(firebaseInstances.db, "users", user.uid), {
+      //   name: formData.name,
+      //   email: formData.email,
+      //   dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+      //   age: ageNum,
+      //   heightFt: heightFtNum,
+      //   heightIn: heightInNum,
+      //   weightLbs: weightLbsNum,
+      //   fitnessGoal: 'Maintain', // Default
+      // });
+
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
       localStorage.removeItem('onboardingPage');
@@ -338,7 +349,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
 };
 
 interface SignupFormProps {
-  formData: Record<string, string | number | undefined>;
+  formData: Record<string, string>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -358,7 +369,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
         <Input
           type="email"
           id="email"
-          value={formData.email as string || ''}
+          value={formData.email || ''}
           onChange={handleEmailChange}
           placeholder="your.email@example.com"
           required
@@ -370,7 +381,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
         <Input
           type="password"
           id="password"
-          value={formData.password as string || ''}
+          value={formData.password || ''}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           placeholder="Create a strong password"
           required
@@ -383,7 +394,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
         <Input
           type="text"
           id="name"
-          value={formData.name as string || ''}
+          value={formData.name || ''}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="Your Full Name"
           required
@@ -395,7 +406,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ formData, setFormData }) => {
 };
 
 interface PersonalInfoFormProps {
-  formData: Record<string, string | number | undefined>;
+  formData: Record<string, string>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -414,7 +425,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
             <Input
               type="number"
               id="birthMonth"
-              value={formData.birthMonth as string || ''}
+              value={formData.birthMonth || ''}
               onChange={(e) => setFormData({ ...formData, birthMonth: e.target.value })}
               placeholder="MM"
               min="1"
@@ -428,7 +439,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
             <Input
               type="number"
               id="birthDay"
-              value={formData.birthDay as string || ''}
+              value={formData.birthDay || ''}
               onChange={(e) => setFormData({ ...formData, birthDay: e.target.value })}
               placeholder="DD"
               min="1"
@@ -442,7 +453,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
             <Input
               type="number"
               id="birthYear"
-              value={formData.birthYear as string || ''}
+              value={formData.birthYear || ''}
               onChange={(e) => setFormData({ ...formData, birthYear: e.target.value })}
               placeholder="YYYY"
               min={minYear}
@@ -459,7 +470,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, setFormDa
 };
 
 interface ProfileFormProps {
-  formData: Record<string, string | number | undefined>;
+  formData: Record<string, string>;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -474,7 +485,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                 <Input
                   type="number"
                   id="heightFt"
-                  value={formData.heightFt as string || ''}
+                  value={formData.heightFt || ''}
                   onChange={(e) => setFormData({ ...formData, heightFt: e.target.value })}
                   placeholder="ft"
                   min="0"
@@ -487,7 +498,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
                   <Input
                       type="number"
                       id="heightIn"
-                      value={formData.heightIn as string || ''}
+                      value={formData.heightIn || ''}
                       onChange={(e) => setFormData({ ...formData, heightIn: e.target.value })}
                       placeholder="in"
                       min="0"
@@ -503,7 +514,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
             <Input
               type="number"
               id="weightLbs"
-              value={formData.weightLbs as string || ''}
+              value={formData.weightLbs || ''}
               onChange={(e) => setFormData({ ...formData, weightLbs: e.target.value })}
               placeholder="Your Weight in lbs"
               required
