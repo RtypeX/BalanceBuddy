@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { getFirebase } from "@/lib/firebaseClient"; 
 import { differenceInYears, isValid } from 'date-fns';
 import { createUserWithEmailAndPassword } from 'firebase/auth'; // Explicit import
-import { doc, setDoc } from 'firebase/firestore'; // Explicit import
-
+// import { doc, setDoc } from 'firebase/firestore'; // Explicit import - Temporarily commented out as per user request
 
 interface OnboardingPageProps {
   params: { // This comes from Next.js for dynamic routes
@@ -187,7 +185,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
 
  const completeSignUp = async (): Promise<void> => {
     // Check if firebase auth instance is available
-    if (!firebaseInstances.auth || !firebaseInstances.db) { 
+    if (!firebaseInstances.auth /*|| !firebaseInstances.db */) { // Firestore DB check temporarily removed
         toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
@@ -270,29 +268,43 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
         throw new Error("User creation failed at Firebase Auth level.");
       }
       
-      // User data will NOT be saved to Firestore for now.
-      // console.log("Demo Mode: User profile data not saved to Firestore.");
-      // To enable saving to Firestore:
-      // await setDoc(doc(firebaseInstances.db, "users", user.uid), {
-      //   name: formData.name,
-      //   email: formData.email,
-      //   dateOfBirth: dateOfBirth.toISOString().split('T')[0],
-      //   age: ageNum,
-      //   heightFt: heightFtNum,
-      //   heightIn: heightInNum,
-      //   weightLbs: weightLbsNum,
-      //   fitnessGoal: 'Maintain', // Default
-      // });
+      // Temporarily skip saving to Firestore as per user request
+      // if (firebaseInstances.db) {
+      //   await setDoc(doc(firebaseInstances.db, "users", user.uid), {
+      //     name: formData.name,
+      //     email: formData.email,
+      //     dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+      //     age: ageNum,
+      //     heightFt: heightFtNum,
+      //     heightIn: heightInNum,
+      //     weightLbs: weightLbsNum,
+      //     fitnessGoal: 'Maintain', // Default
+      //   });
+      // }
 
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
+      // Save profile data to localStorage as Firestore is skipped
+      const profileDataToStore = {
+          name: formData.name,
+          email: formData.email,
+          dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+          age: ageNum,
+          heightFt: heightFtNum,
+          heightIn: heightInNum,
+          weightLbs: weightLbsNum,
+          fitnessGoal: 'Maintain', // Default
+      };
+      localStorage.setItem('profileData', JSON.stringify(profileDataToStore));
+
+
       localStorage.removeItem('onboardingPage');
       localStorage.removeItem('onboardingUserEmail');
 
       toast({
         id: "user-created",
         title: 'Signup successful',
-        description: 'Your account has been created. Profile data is not saved to the database in this demo.',
+        description: 'Your account has been created. Profile data saved locally.',
       });
       router.push('/home');
     } catch (error: any) {
