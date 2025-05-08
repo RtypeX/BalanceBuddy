@@ -53,7 +53,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   const router = useRouter();
   const clientRouteParams = useParams(); 
   const { toast } = useToast();
-  const firebase = getFirebase();
+  const { app, auth: firebaseAuthInstance, db: firestoreInstance } = getFirebase(); // Destructure directly
 
   const getInitialPageNumber = (): number => {
     let pageNumStr: string | string[] | undefined = clientRouteParams?.page;
@@ -188,7 +188,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   };
 
  const completeSignUp = async (): Promise<void> => {
-    if (!firebase.app || !firebase.auth || !firebase.db) {
+    if (!app || !firebaseAuthInstance || !firestoreInstance) { // Check the destructured instances
         toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
@@ -249,17 +249,15 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     }
 
     try {
-      const auth = getAuth(firebase.app);
-      const db = getFirestore(firebase.app);
-
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      // Use the destructured instances
+      const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, formData.email, formData.password);
       const user = userCredential.user;
 
       if (!user) {
         throw new Error("User creation failed at Firebase Auth level.");
       }
 
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(firestoreInstance, "users", user.uid), {
         name: formData.name,
         email: formData.email,
         dateOfBirth: dateOfBirth.toISOString().split('T')[0],
