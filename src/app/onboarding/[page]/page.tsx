@@ -52,7 +52,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   const router = useRouter();
   const clientRouteParams = useParams(); 
   const { toast } = useToast();
-  const { app, auth: firebaseAuthInstance, db: firestoreInstance } = getFirebase(); 
+  const firebaseInstances = getFirebase(); 
 
   const getInitialPageNumber = (): number => {
     let pageNumStr: string | string[] | undefined = clientRouteParams?.page;
@@ -184,7 +184,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   };
 
  const completeSignUp = async (): Promise<void> => {
-    if (!app || !firebaseAuthInstance || !firestoreInstance) { 
+    if (!firebaseInstances.app || !firebaseInstances.auth || !firebaseInstances.db) { 
         toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
         return;
     }
@@ -253,22 +253,23 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, formData.email, formData.password);
+      const userCredential = await createUserWithEmailAndPassword(firebaseInstances.auth, formData.email, formData.password);
       const user = userCredential.user;
 
       if (!user) {
         throw new Error("User creation failed at Firebase Auth level.");
       }
 
-      await setDoc(doc(firestoreInstance, "users", user.uid), {
+      await setDoc(doc(firebaseInstances.db, "users", user.uid), {
         name: formData.name,
         email: formData.email,
-        dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+        dateOfBirth: dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD string
         age: ageNum,
         heightFt: heightFtNum,
         heightIn: heightInNum,
         weightLbs: weightLbsNum,
-        fitnessGoal: 'Maintain',
+        fitnessGoal: 'Maintain', // Default fitness goal
+        // Add other fields from formData as needed
       });
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
