@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,7 @@ interface OnboardingPageProps {
 
 interface OnboardingStepProps {
   step: OnboardingStep;
-  formData: Record<string, string | number | undefined>; // Keep dateOfBirth for now, will be derived
+  formData: Record<string, string | number | undefined>; 
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -83,9 +82,14 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     if (!isNaN(paramPageNum) && paramPageNum !== currentPageNumber && OnboardingSteps[paramPageNum -1]) {
       setCurrentPageNumber(paramPageNum);
     } else if (isNaN(paramPageNum) || !OnboardingSteps[paramPageNum-1]) {
-      setCurrentPageNumber(getInitialPage());
+      // If param is invalid, reset to a valid page, potentially the initial page.
+      // This avoids an infinite loop if params.page is consistently invalid.
+      const validInitialPage = getInitialPage();
+      if (currentPageNumber !== validInitialPage) {
+        setCurrentPageNumber(validInitialPage);
+      }
     }
-  }, [params.page]); // Removed currentPageNumber from deps to avoid loop
+  }, [params.page]); 
 
   const currentStep = OnboardingSteps[currentPageNumber - 1];
   const { toast } = useToast();
@@ -115,13 +119,12 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
     email: '',
     password: '',
     name: '',
-    // Removed age, will be calculated
     heightFt: '',
     heightIn: '',
     weightLbs: '',
-    birthMonth: '', // New
-    birthDay: '',   // New
-    birthYear: '',  // New
+    birthMonth: '', 
+    birthDay: '',   
+    birthYear: '',  
   });
 
   const totalPages = OnboardingSteps.length;
@@ -148,50 +151,70 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
   };
 
  const completeSignUp = async (): Promise<void> => {
-    // Parse date of birth components
+    // Ensure Firebase is initialized
+    if (!firebase.app || !firebase.auth || !firebase.db) {
+        toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
+        return;
+    }
+
+    // Check for empty strings before parsing date components
+    if (!formData.birthMonth?.trim() || !formData.birthDay?.trim() || !formData.birthYear?.trim()) {
+        toast({ variant: "destructive", title: 'Missing Date of Birth', description: 'Please enter your complete date of birth (month, day, and year).' });
+        return;
+    }
+
     const month = parseInt(formData.birthMonth, 10);
     const day = parseInt(formData.birthDay, 10);
     const year = parseInt(formData.birthYear, 10);
 
+    // Validate parsed numbers and ranges for date components
     if (isNaN(month) || month < 1 || month > 12 ||
-        isNaN(day) || day < 1 || day > 31 ||
+        isNaN(day) || day < 1 || day > 31 || 
         isNaN(year) || year < (new Date().getFullYear() - 100) || year > (new Date().getFullYear() - 16)) {
-        toast({ variant: "destructive", title: 'Invalid Date of Birth', description: 'Please enter a valid month (1-12), day (1-31), and year (16-100 years ago).' });
+        toast({ variant: "destructive", title: 'Invalid Date of Birth Format', description: 'Please enter a valid month (1-12), day (1-31), and year (you must be 16-100 years old).' });
         return;
     }
 
     // Construct date object - month is 0-indexed for Date constructor
     const dateOfBirth = new Date(year, month - 1, day);
 
+    // Validate the constructed date (e.g., Feb 30 is invalid)
     if (!isValid(dateOfBirth) || dateOfBirth.getFullYear() !== year || dateOfBirth.getMonth() !== month - 1 || dateOfBirth.getDate() !== day) {
-         toast({ variant: "destructive", title: 'Invalid Date', description: 'The date of birth entered is not a valid calendar date (e.g., Feb 30).' });
+         toast({ variant: "destructive", title: 'Invalid Calendar Date', description: 'The date of birth entered is not a valid calendar date (e.g., February 30th).' });
         return;
     }
 
+    // Validate age
     const ageNum = differenceInYears(new Date(), dateOfBirth);
     if (ageNum < 16 || ageNum > 100) {
-      toast({ variant: "destructive", title: 'Invalid Age', description: 'You must be between 16 and 100 years old to sign up.' });
+      toast({ variant: "destructive", title: 'Age Requirement Not Met', description: 'You must be between 16 and 100 years old to sign up.' });
       return;
     }
 
-    const heightFtNum = parseInt(formData.heightFt);
-    const heightInNum = parseInt(formData.heightIn);
-    const weightLbsNum = parseFloat(formData.weightLbs);
-
-    if (isNaN(heightFtNum) || heightFtNum < 0 || isNaN(heightInNum) || heightInNum < 0 || heightInNum >= 12) {
-        toast({ variant: "destructive", title: 'Invalid Height', description: 'Please enter valid feet and inches (0-11).' });
-        return;
-    }
-    if (isNaN(weightLbsNum) || weightLbsNum <= 0) {
-        toast({ variant: "destructive", title: 'Invalid Weight', description: 'Please enter a valid weight in pounds.' });
-        return;
-    }
+    // Validate other fields (name, email, password, height, weight)
     if (!formData.name.trim()) {
         toast({ variant: "destructive", title: 'Missing Name', description: 'Please enter your name.' });
         return;
     }
     if (!formData.email.trim() || !formData.password) {
         toast({ variant: "destructive", title: 'Missing Credentials', description: 'Email and password are required.' });
+        return;
+    }
+    if (formData.password.length < 6) { 
+        toast({ variant: "destructive", title: 'Weak Password', description: 'Password must be at least 6 characters long.' });
+        return;
+    }
+    
+    const heightFtNum = parseInt(formData.heightFt, 10);
+    const heightInNum = parseInt(formData.heightIn, 10);
+    const weightLbsNum = parseFloat(formData.weightLbs);
+
+    if (isNaN(heightFtNum) || heightFtNum < 0 || isNaN(heightInNum) || heightInNum < 0 || heightInNum >= 12) {
+        toast({ variant: "destructive", title: 'Invalid Height', description: 'Please enter valid feet and inches (inches 0-11).' });
+        return;
+    }
+    if (isNaN(weightLbsNum) || weightLbsNum <= 0) {
+        toast({ variant: "destructive", title: 'Invalid Weight', description: 'Please enter a valid weight in pounds.' });
         return;
     }
 
@@ -203,18 +226,18 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
       const user = userCredential.user;
 
       if (!user) {
-        throw new Error("User creation failed.");
+        throw new Error("User creation failed at Firebase Auth level.");
       }
 
       await setDoc(doc(db, "users", user.uid), {
         name: formData.name,
         email: formData.email,
-        dateOfBirth: dateOfBirth.toISOString().split('T')[0], 
-        age: ageNum, 
+        dateOfBirth: dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD
+        age: ageNum, // Store calculated age
         heightFt: heightFtNum,
         heightIn: heightInNum,
         weightLbs: weightLbsNum,
-        fitnessGoal: 'Maintain', 
+        fitnessGoal: 'Maintain', // Default fitness goal
       });
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
@@ -252,6 +275,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params }) => {
         title: 'Sign up failed',
         description: errorMessage,
       });
+      console.error("Signup Error Details:", error); // Log full error for debugging
     }
   };
 
@@ -461,3 +485,4 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
 export default OnboardingPage;
 
 const OnboardingSteps = ['signup', 'personal-info', 'profile'];
+
