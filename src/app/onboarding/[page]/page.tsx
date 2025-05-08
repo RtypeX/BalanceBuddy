@@ -8,7 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation'; // Added useParams
 import React, { useState, type FC, useEffect } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+// Removed Firestore imports as we are not saving to Firestore for now
+// import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import { getFirebase } from "@/lib/firebaseClient"; 
 import { differenceInYears, isValid } from 'date-fns';
@@ -184,21 +185,15 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
   };
 
  const completeSignUp = async (): Promise<void> => {
-    if (!firebaseInstances.app || !firebaseInstances.auth || !firebaseInstances.db) { 
-        toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase is not configured correctly. Please try again later.' });
+    // Check if firebase auth instance is available
+    if (!firebaseInstances.auth) { 
+        toast({ variant: "destructive", title: 'Initialization Error', description: 'Firebase Auth is not configured correctly. Please try again later.' });
         return;
     }
 
-    if (!formData.birthMonth?.trim()) {
-        toast({ variant: "destructive", title: 'Missing Birth Month', description: 'Please enter the month of your birth.' });
-        return;
-    }
-    if (!formData.birthDay?.trim()) {
-        toast({ variant: "destructive", title: 'Missing Birth Day', description: 'Please enter the day of your birth.' });
-        return;
-    }
-    if (!formData.birthYear?.trim()) {
-        toast({ variant: "destructive", title: 'Missing Birth Year', description: 'Please enter the year of your birth.' });
+    // Date of birth validation
+    if (!formData.birthMonth?.trim() || !formData.birthDay?.trim() || !formData.birthYear?.trim()) {
+        toast({ variant: "destructive", title: 'Missing Date of Birth', description: 'Please enter your full date of birth.' });
         return;
     }
 
@@ -209,7 +204,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
     if (isNaN(month) || month < 1 || month > 12 ||
         isNaN(day) || day < 1 || day > 31 ||
         isNaN(year) || year < (new Date().getFullYear() - 100) || year > (new Date().getFullYear() - 16)) {
-        toast({ variant: "destructive", title: 'Invalid Date of Birth Format', description: 'Please enter a valid month (1-12), day (1-31), and year (you must be 16-100 years old).' });
+        toast({ variant: "destructive", title: 'Invalid Date of Birth Format', description: 'Please enter a valid month (1-12), day (1-31), and year. You must be 16-100 years old.' });
         return;
     }
 
@@ -226,6 +221,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
       return;
     }
 
+    // Other form field validations
     if (!formData.name.trim()) {
         toast({ variant: "destructive", title: 'Missing Name', description: 'Please enter your name.' });
         return;
@@ -260,17 +256,23 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
         throw new Error("User creation failed at Firebase Auth level.");
       }
 
-      await setDoc(doc(firebaseInstances.db, "users", user.uid), {
-        name: formData.name,
-        email: formData.email,
-        dateOfBirth: dateOfBirth.toISOString().split('T')[0], // Store as YYYY-MM-DD string
-        age: ageNum,
-        heightFt: heightFtNum,
-        heightIn: heightInNum,
-        weightLbs: weightLbsNum,
-        fitnessGoal: 'Maintain', // Default fitness goal
-        // Add other fields from formData as needed
-      });
+      // User data will NOT be saved to Firestore for now.
+      // If you need to store this data later, you would add Firestore `setDoc` call here.
+      // For example:
+      // if (firebaseInstances.db) {
+      //   await setDoc(doc(firebaseInstances.db, "users", user.uid), {
+      //     name: formData.name,
+      //     email: formData.email,
+      //     dateOfBirth: dateOfBirth.toISOString().split('T')[0],
+      //     age: ageNum,
+      //     heightFt: heightFtNum,
+      //     heightIn: heightInNum,
+      //     weightLbs: weightLbsNum,
+      //     fitnessGoal: 'Maintain', // Default
+      //   });
+      // } else {
+      //   console.warn("Firestore DB instance is not available. Skipping data save to Firestore.");
+      // }
 
       localStorage.setItem('user', JSON.stringify({ id: user.uid, email: formData.email }));
       localStorage.removeItem('onboardingPage');
@@ -279,7 +281,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ params: serverSideParams }) =
       toast({
         id: "user-created",
         title: 'Signup successful',
-        description: 'Your profile has been created.',
+        description: 'Your account has been created. Profile data is not saved to the database in this demo.',
       });
       router.push('/home');
     } catch (error: any) {
