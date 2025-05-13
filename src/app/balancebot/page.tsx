@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -171,7 +170,8 @@ export default function BalanceBotPage() {
     if (showSubscriptionModal) {
       setShowSubscriptionModal(false);
     }
-  }, [pathname, showSubscriptionModal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]); // Only run when pathname changes
 
 
   const scrollToBottom = () => {
@@ -597,8 +597,14 @@ export default function BalanceBotPage() {
 
        {/* Subscription Modal */}
       {showSubscriptionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md shadow-xl">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSubscriptionModal(false)} // Close on overlay click
+        >
+          <Card 
+            className="w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()} // Prevent click on card from closing modal
+          >
             <CardHeader>
               <CardTitle className="text-xl">Upgrade to BalanceBot Premium</CardTitle>
               <CardDescription>Get unlimited access and more!</CardDescription>
@@ -623,3 +629,4 @@ export default function BalanceBotPage() {
     </div>
   );
 }
+
