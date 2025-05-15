@@ -81,4 +81,4 @@ rm -rf "$TEMP_DIR"
 echo "Temporary directory cleaned up."
 
 # Make sure to replace YOUR_GITHUB_USERNAME and YOUR_REPO_NAME with your actual GitHub username and repository name
-echo "Deployment complete! Visit: https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/"
+echo "Deployment complete! Visit: https://rtypex.github.io/balanceBuddy/"
