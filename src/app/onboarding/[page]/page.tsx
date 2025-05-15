@@ -23,6 +23,12 @@ interface OnboardingPageProps {
 type OnboardingStep = 'signup' | 'personal-info' | 'profile';
 const OnboardingSteps: OnboardingStep[] = ['signup', 'personal-info', 'profile'];
 
+// Function to generate static paths for dynamic routes
+export async function generateStaticParams() {
+  return OnboardingSteps.map((_, index) => ({
+    page: (index + 1).toString(),
+  }));
+}
 
 interface OnboardingStepProps {
   step: OnboardingStep;
@@ -561,3 +567,5 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ formData, setFormData }) => {
 };
 
 export default OnboardingPage;
+
+    
