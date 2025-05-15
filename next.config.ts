@@ -2,6 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export', // Add this line for static site generation
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -23,6 +24,7 @@ const nextConfig: NextConfig = {
         pathname: '/**', // Allow any path under picsum.photos
       },
     ],
+    unoptimized: true, // Required for static export with next/image if not using a custom loader
   },
 };
 
