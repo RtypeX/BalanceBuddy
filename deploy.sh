@@ -22,8 +22,8 @@ fi
 echo "Confirmed on the main branch."
 
 # Step 2: Build the Flutter web app with the correct base href
-echo "Building the Flutter web app with base href /myappRepo/..."
-flutter build web --release --base-href="/myappRepo/" #change '/myappRepo/' to the name of the github repo of your project
+echo "Building the Flutter web app with base href /rtypex/..."
+flutter build web --release --base-href="/rtypex/" #change '/myappRepo/' to the name of the github repo of your project
 
 # Step 3: Verify the build was successful
 if [ ! -d "build/web" ]; then
@@ -81,4 +81,4 @@ git checkout main
 rm -rf "$TEMP_DIR"
 echo "Temporary directory cleaned up."
 
-echo "Deployment complete! Visit: https://rtypex.github.io/myappRepo/" #change to your username in the link
+echo "Deployment complete! Visit: https://rtypex.github.io/rtypex/" #change to your username in the link
