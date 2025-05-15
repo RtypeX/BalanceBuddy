@@ -36,9 +36,13 @@ interface RequestBody {
 
 export async function POST(req: Request) {
   let modelTypeFromRequest: 'gemini' | 'gpt' | undefined;
+  console.log("API Route Info: Received POST request to /api/chat");
   try {
-    const { message, history = [], modelType, profileData }: RequestBody = await req.json();
+    const requestBody: RequestBody = await req.json();
+    const { message, history = [], modelType, profileData } = requestBody;
     modelTypeFromRequest = modelType; 
+    console.log("API Route Info: Parsed request body:", { message: message ? "Exists" : "Missing", historyLength: history.length, modelType, profileData: profileData ? "Exists" : "Missing" });
+
 
     if (!message) {
       console.error("API Route Error: No message provided in request body.");
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
     if (profileData) {
         systemMessageContent += ` The user's profile is as follows: Name: ${profileData.name || 'N/A'}, Age: ${profileData.age || 'N/A'}, Height: ${profileData.heightFt || 'N/A'} ft ${profileData.heightIn || 'N/A'} in, Weight: ${profileData.weightLbs || 'N/A'} lbs, Fitness Goal: ${profileData.fitnessGoal || 'N/A'}. Please consider this information when providing advice.`;
     }
+    console.log("API Route Info: System message content:", systemMessageContent);
 
 
     if (modelType === 'gemini') {
@@ -100,10 +105,12 @@ export async function POST(req: Request) {
           console.log("API Route Info: Successfully extracted text from Gemini response:", botResponseContent);
         } catch (textError: any) {
           console.error("API Route Error: Failed to extract text using result.response.text() from Gemini:", textError.message);
-          botResponseContent = null;
+          console.error("API Route Info: Full Gemini result.response object:", JSON.stringify(result.response, null, 2));
+          botResponseContent = null; 
         }
       } else {
         console.error("API Route Error: Gemini result or result.response is undefined or null.");
+        console.log("API Route Info: Full Gemini result object (if available):", JSON.stringify(result, null, 2));
       }
 
     } else if (modelType === 'gpt') {
@@ -117,7 +124,7 @@ export async function POST(req: Request) {
       const messagesForAIMLAPI: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
         { role: 'system', content: systemMessageContent },
         ...recentHistory.map((msg: { role: string; content: string }) => ({
-          role: msg.role as 'user' | 'assistant', // Cast to expected roles
+          role: msg.role as 'user' | 'assistant', 
           content: msg.content,
         })),
         { role: 'user', content: message }
@@ -132,28 +139,35 @@ export async function POST(req: Request) {
           "Authorization": `Bearer ${aimlApiKey}`,
         },
         body: JSON.stringify({
-          model: GPT_MODEL_NAME, // e.g., "gpt-4o-mini"
+          model: GPT_MODEL_NAME, 
           messages: messagesForAIMLAPI,
-          max_tokens: 200, // Optional: Adjust as needed
+          max_tokens: 200, 
         }),
       });
 
       console.log("API Route Info: AIMLAPI response status:", aimlApiResponse.status);
+      const responseText = await aimlApiResponse.text(); // Read the response text first
+      console.log("API Route Info: AIMLAPI raw response text:", responseText.substring(0, 500)); // Log first 500 chars
 
       if (!aimlApiResponse.ok) {
-        const errorBody = await aimlApiResponse.text();
-        console.error(`API Route Error: AIMLAPI request failed with status ${aimlApiResponse.status}: ${errorBody}`);
-        return NextResponse.json({ error: `AIMLAPI request failed: ${aimlApiResponse.statusText} - ${errorBody}` }, { status: aimlApiResponse.status });
+        console.error(`API Route Error: AIMLAPI request failed with status ${aimlApiResponse.status}: ${responseText}`);
+        return NextResponse.json({ error: `AIMLAPI request failed: ${aimlApiResponse.statusText} - ${responseText.substring(0, 200)}` }, { status: aimlApiResponse.status });
       }
 
-      const completion = await aimlApiResponse.json();
-      console.log("API Route Info: Raw completion from AIMLAPI:", JSON.stringify(completion, null, 2));
+      try {
+        const completion = JSON.parse(responseText); // Now parse the text
+        console.log("API Route Info: Raw completion from AIMLAPI:", JSON.stringify(completion, null, 2));
 
-      botResponseContent = completion.choices?.[0]?.message?.content;
-      if (botResponseContent) {
-        console.log("API Route Info: Successfully extracted text from AIMLAPI response:", botResponseContent);
-      } else {
-         console.error("API Route Error: Failed to extract content from AIMLAPI response. Choices[0].message.content is null or undefined.");
+        botResponseContent = completion.choices?.[0]?.message?.content;
+        if (botResponseContent) {
+          console.log("API Route Info: Successfully extracted text from AIMLAPI response:", botResponseContent);
+        } else {
+           console.error("API Route Error: Failed to extract content from AIMLAPI response. Choices[0].message.content is null or undefined.");
+        }
+      } catch (parseError) {
+        console.error("API Route Error: Failed to parse AIMLAPI response as JSON:", parseError);
+        console.error("API Route Info: AIMLAPI response text that failed to parse:", responseText);
+        return NextResponse.json({ error: "Failed to parse AIMLAPI response. Raw response: " + responseText.substring(0,200) }, { status: 500 });
       }
     } else {
       console.error("API Route Error: Invalid modelType provided:", modelType);
@@ -162,10 +176,9 @@ export async function POST(req: Request) {
 
     if (!botResponseContent) {
         console.error(`API Route Error: Bot response content is null or empty after ${modelType} API call.`);
-        // Provide a more generic error to the client to avoid exposing too much detail.
         return NextResponse.json({ error: `The AI service (${modelType}) did not return a valid response. Please check server logs for details.` }, { status: 500 });
     }
-
+    console.log(`API Route Info: Sending successful response to client for model ${modelType}:`, { response: botResponseContent.substring(0,100) + "..."});
     return NextResponse.json({ response: botResponseContent });
 
   } catch (error: any) {
